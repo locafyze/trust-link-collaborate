@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -31,8 +32,7 @@ const ContractorStats = () => {
         .from('milestones')
         .select('*, projects!inner(*)')
         .eq('projects.contractor_id', profile.id)
-        .eq('status', 'pending')
-        .order('due_date', { ascending: true })
+        .order('created_at', { ascending: false })
         .limit(1);
       
       if (error) throw error;
@@ -47,8 +47,8 @@ const ContractorStats = () => {
       if (!profile?.id) return [];
       const { data, error } = await supabase
         .from('payment_requests')
-        .select('*, projects!inner(*)')
-        .eq('projects.contractor_id', profile.id);
+        .select('*, milestones!inner(*, projects!inner(*))')
+        .eq('milestones.projects.contractor_id', profile.id);
       
       if (error) throw error;
       return data || [];
@@ -57,12 +57,14 @@ const ContractorStats = () => {
   });
 
   const totalProjects = projects?.length || 0;
-  const activeProjects = projects?.filter(p => p.status === 'active')?.length || 0;
+  // Calculate active projects as those with end_date in the future
+  const activeProjects = projects?.filter(p => new Date(p.end_date) > new Date())?.length || 0;
   const totalEarnings = payments?.filter(p => p.status === 'paid')?.reduce((sum, p) => sum + (p.amount || 0), 0) || 0;
   const pendingEarnings = payments?.filter(p => p.status === 'pending')?.reduce((sum, p) => sum + (p.amount || 0), 0) || 0;
   const nextMilestone = milestones?.[0];
-  const daysUntilNextMilestone = nextMilestone 
-    ? Math.ceil((new Date(nextMilestone.due_date).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24))
+  // Calculate days since milestone creation as a simple metric
+  const daysSinceLastMilestone = nextMilestone 
+    ? Math.ceil((new Date().getTime() - new Date(nextMilestone.created_at).getTime()) / (1000 * 60 * 60 * 24))
     : null;
 
   return (
@@ -92,9 +94,9 @@ const ContractorStats = () => {
         delay={0.3}
       />
       <AnimatedStatsCard
-        title="Next Deadline"
-        value={daysUntilNextMilestone !== null ? `${daysUntilNextMilestone} days` : 'None'}
-        subtitle={nextMilestone?.title || 'No upcoming deadlines'}
+        title="Recent Activity"
+        value={daysSinceLastMilestone !== null ? `${daysSinceLastMilestone} days` : 'None'}
+        subtitle={nextMilestone?.title || 'No recent milestones'}
         icon={Calendar}
         iconColor="text-red-600"
         delay={0.4}
