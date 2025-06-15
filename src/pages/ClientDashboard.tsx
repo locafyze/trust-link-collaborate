@@ -3,12 +3,32 @@ import React from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Shield, Home, Calendar, DollarSign, MessageSquare, Settings } from 'lucide-react';
+import { Shield, Home, Calendar, DollarSign, MessageSquare, Settings, ChevronDown, ChevronUp } from 'lucide-react';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import MilestoneTimeline from '@/components/MilestoneTimeline';
 import PaymentOverviewCard from '@/components/PaymentOverviewCard';
+import ProjectDocuments from '@/components/ProjectDocuments';
 
 const ClientDashboard = () => {
   const { profile, signOut } = useAuth();
+  const [expandedProjects, setExpandedProjects] = React.useState<Set<number>>(new Set());
+
+  const toggleProjectExpansion = (index: number) => {
+    const newExpanded = new Set(expandedProjects);
+    if (newExpanded.has(index)) {
+      newExpanded.delete(index);
+    } else {
+      newExpanded.add(index);
+    }
+    setExpandedProjects(newExpanded);
+  };
+
+  // Mock project data with IDs - in a real app, this would come from the database
+  const mockProjects = [
+    { id: '1', name: 'Kitchen Renovation', contractor: 'Elite Builders', status: 'In Progress', progress: 60, budget: '$35,000' },
+    { id: '2', name: 'Bathroom Remodel', contractor: 'Modern Homes', status: 'Planning', progress: 15, budget: '$18,000' },
+    { id: '3', name: 'Deck Installation', contractor: 'Outdoor Pro', status: 'Starting Soon', progress: 0, budget: '$12,000' },
+  ];
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -99,37 +119,57 @@ const ClientDashboard = () => {
             <MilestoneTimeline />
           </div>
 
-          {/* Active Projects */}
-          <Card>
+          {/* Active Projects with Documents */}
+          <Card className="lg:col-span-2">
             <CardHeader>
               <CardTitle>Active Projects</CardTitle>
-              <CardDescription>Your current construction projects</CardDescription>
+              <CardDescription>Your current construction projects and documents</CardDescription>
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
-                {[
-                  { name: 'Kitchen Renovation', contractor: 'Elite Builders', status: 'In Progress', progress: 60, budget: '$35,000' },
-                  { name: 'Bathroom Remodel', contractor: 'Modern Homes', status: 'Planning', progress: 15, budget: '$18,000' },
-                  { name: 'Deck Installation', contractor: 'Outdoor Pro', status: 'Starting Soon', progress: 0, budget: '$12,000' },
-                ].map((project, index) => (
-                  <div key={index} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                    <div>
-                      <h4 className="font-medium">{project.name}</h4>
-                      <p className="text-sm text-gray-600">{project.contractor}</p>
-                      <p className="text-sm text-blue-600 font-medium">{project.budget}</p>
+                {mockProjects.map((project, index) => {
+                  const isExpanded = expandedProjects.has(index);
+                  return (
+                    <div key={index} className="border rounded-lg">
+                      <div className="flex items-center justify-between p-3 bg-gray-50">
+                        <div className="flex items-center space-x-3">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => toggleProjectExpansion(index)}
+                            className="p-1"
+                          >
+                            {isExpanded ? (
+                              <ChevronUp className="h-4 w-4" />
+                            ) : (
+                              <ChevronDown className="h-4 w-4" />
+                            )}
+                          </Button>
+                          <div>
+                            <h4 className="font-medium">{project.name}</h4>
+                            <p className="text-sm text-gray-600">{project.contractor}</p>
+                            <p className="text-sm text-blue-600 font-medium">{project.budget}</p>
+                          </div>
+                        </div>
+                        <div className="text-right">
+                          <span className={`px-2 py-1 rounded-full text-xs ${
+                            project.status === 'In Progress' ? 'bg-blue-100 text-blue-800' :
+                            project.status === 'Planning' ? 'bg-yellow-100 text-yellow-800' :
+                            'bg-gray-100 text-gray-800'
+                          }`}>
+                            {project.status}
+                          </span>
+                          <div className="text-sm text-gray-600 mt-1">{project.progress}% Complete</div>
+                        </div>
+                      </div>
+                      <Collapsible open={isExpanded} onOpenChange={() => toggleProjectExpansion(index)}>
+                        <CollapsibleContent className="p-4 border-t">
+                          <ProjectDocuments projectId={project.id} isContractor={false} />
+                        </CollapsibleContent>
+                      </Collapsible>
                     </div>
-                    <div className="text-right">
-                      <span className={`px-2 py-1 rounded-full text-xs ${
-                        project.status === 'In Progress' ? 'bg-blue-100 text-blue-800' :
-                        project.status === 'Planning' ? 'bg-yellow-100 text-yellow-800' :
-                        'bg-gray-100 text-gray-800'
-                      }`}>
-                        {project.status}
-                      </span>
-                      <div className="text-sm text-gray-600 mt-1">{project.progress}% Complete</div>
-                    </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             </CardContent>
           </Card>
