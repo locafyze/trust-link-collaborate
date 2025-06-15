@@ -27,10 +27,19 @@ const ClientProjectsList = () => {
     queryKey: ['client-projects', profile?.email],
     queryFn: async () => {
       console.log('Fetching projects for client:', profile?.email);
+      console.log('Current user profile:', profile);
       
       if (!profile?.email) {
         throw new Error('No client email available');
       }
+      
+      // First, let's check all projects in the database for debugging
+      const { data: allProjects, error: allProjectsError } = await supabase
+        .from('projects')
+        .select('*');
+      
+      console.log('All projects in database:', allProjects);
+      console.log('Error fetching all projects:', allProjectsError);
       
       const { data, error } = await supabase
         .from('projects')
@@ -44,6 +53,13 @@ const ClientProjectsList = () => {
       }
 
       console.log('Fetched client projects:', data);
+      console.log('Query was looking for client_email:', profile.email);
+      
+      // Let's also log what emails exist in the projects
+      if (allProjects) {
+        console.log('Client emails in all projects:', allProjects.map(p => p.client_email));
+      }
+      
       return data as Project[];
     },
     enabled: !!profile?.email,
