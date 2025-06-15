@@ -4,6 +4,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Shield, Home, Calendar, DollarSign, MessageSquare, Settings } from 'lucide-react';
+import MilestoneTimeline from '@/components/MilestoneTimeline';
 
 const ClientDashboard = () => {
   const { profile, signOut } = useAuth();
@@ -87,6 +88,11 @@ const ClientDashboard = () => {
 
         {/* Dashboard Content */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+          {/* Project Timeline */}
+          <div className="lg:col-span-2">
+            <MilestoneTimeline />
+          </div>
+
           {/* Active Projects */}
           <Card>
             <CardHeader>
