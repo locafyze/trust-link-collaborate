@@ -202,13 +202,14 @@ const AddMilestoneDialog: React.FC<AddMilestoneDialogProps> = ({
             <FormField
               control={form.control}
               name="media"
-              render={({ field: { onChange, ...field } }) => (
+              render={({ field: { onChange, name, ...field } }) => (
                 <FormItem>
                   <FormLabel>Photo/Video (Optional)</FormLabel>
                   <FormControl>
                     <div className="flex items-center space-x-2">
                       <Input
                         type="file"
+                        name={name}
                         accept="image/*,video/*"
                         onChange={(e) => onChange(e.target.files)}
                         className="flex-1"
