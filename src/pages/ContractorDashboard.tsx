@@ -1,5 +1,5 @@
 
-import React from 'react';
+import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/contexts/AuthContext';
@@ -14,22 +14,37 @@ import WelcomeMessage from '@/components/WelcomeMessage';
 import MobileNavigation from '@/components/MobileNavigation';
 import ThemeToggle from '@/components/ThemeToggle';
 import NotificationBell from '@/components/NotificationBell';
+import SubscriptionBanner from '@/components/SubscriptionBanner';
+import UpgradeDialog from '@/components/UpgradeDialog';
 import { useProjectChatModal } from '@/hooks/useProjectChatModal';
+import { useSubscription } from '@/hooks/useSubscription';
 
 const ContractorDashboard = () => {
   const { profile, signOut } = useAuth();
   const navigate = useNavigate();
   const isMobile = useIsMobile();
   const { openChat, ChatModal } = useProjectChatModal();
+  const { refreshData } = useSubscription();
+  const [upgradeOpen, setUpgradeOpen] = useState(false);
+  const [upgradeType, setUpgradeType] = useState<'subscription' | 'project'>('subscription');
 
   const handleProjectAdded = () => {
-    // This will trigger a refetch of the projects data
     console.log('Project added, refreshing data...');
+    refreshData();
   };
 
   const handleNotificationClick = (projectId: string, projectName: string) => {
     console.log('Opening chat for project:', projectName);
     openChat(projectId, projectName);
+  };
+
+  const handleUpgrade = (type: 'subscription' | 'project') => {
+    setUpgradeType(type);
+    setUpgradeOpen(true);
+  };
+
+  const handleUpgradeSuccess = () => {
+    refreshData();
   };
 
   return (
@@ -68,6 +83,7 @@ const ContractorDashboard = () => {
       {/* Main Content */}
       <main className="container mx-auto px-4 py-6">
         <div className="space-y-6">
+          <SubscriptionBanner onUpgrade={handleUpgrade} />
           <WelcomeMessage name={profile?.full_name} role="contractor" />
           <ContractorStats />
           
@@ -85,6 +101,14 @@ const ContractorDashboard = () => {
 
       {/* Chat Modal */}
       <ChatModal />
+
+      {/* Upgrade Dialog */}
+      <UpgradeDialog
+        open={upgradeOpen}
+        onOpenChange={setUpgradeOpen}
+        type={upgradeType}
+        onSuccess={handleUpgradeSuccess}
+      />
     </div>
   );
 };

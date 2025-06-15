@@ -1,11 +1,11 @@
-
 import React, { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
-import { toast } from '@/components/ui/use-toast';
+import { useSubscription } from '@/hooks/useSubscription';
+import { toast } from '@/hooks/use-toast';
 import {
   Dialog,
   DialogContent,
@@ -24,7 +24,8 @@ import {
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { Calendar, Plus } from 'lucide-react';
+import { Plus, Lock } from 'lucide-react';
+import UpgradeDialog from './UpgradeDialog';
 
 const formSchema = z.object({
   project_name: z.string().min(1, 'Project name is required'),
@@ -41,8 +42,10 @@ interface AddProjectDialogProps {
 
 const AddProjectDialog: React.FC<AddProjectDialogProps> = ({ onProjectAdded }) => {
   const [open, setOpen] = useState(false);
+  const [upgradeOpen, setUpgradeOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { user } = useAuth();
+  const { hasActiveSubscription, availableCredits, refreshData } = useSubscription();
 
   const form = useForm<FormData>({
     resolver: zodResolver(formSchema),
@@ -54,6 +57,20 @@ const AddProjectDialog: React.FC<AddProjectDialogProps> = ({ onProjectAdded }) =
     },
   });
 
+  const canCreateProject = hasActiveSubscription && availableCredits > 0;
+
+  const handleCreateProject = () => {
+    if (!canCreateProject) {
+      if (!hasActiveSubscription) {
+        setUpgradeOpen(true);
+      } else if (availableCredits === 0) {
+        setUpgradeOpen(true);
+      }
+      return;
+    }
+    setOpen(true);
+  };
+
   const onSubmit = async (data: FormData) => {
     if (!user) {
       toast({
@@ -64,9 +81,26 @@ const AddProjectDialog: React.FC<AddProjectDialogProps> = ({ onProjectAdded }) =
       return;
     }
 
+    if (!canCreateProject) {
+      toast({
+        title: 'Error',
+        description: 'You need an active subscription and available credits to create a project.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
     setIsSubmitting(true);
 
     try {
+      // Consume project credit
+      const { data: creditConsumed, error: creditError } = await supabase
+        .rpc('consume_project_credit', { user_id_param: user.id });
+
+      if (creditError || !creditConsumed) {
+        throw new Error('Failed to consume project credit');
+      }
+
       // Insert project into database
       const { data: project, error } = await supabase
         .from('projects')
@@ -86,25 +120,6 @@ const AddProjectDialog: React.FC<AddProjectDialogProps> = ({ onProjectAdded }) =
         throw error;
       }
 
-      // Send email invitation to client
-      const emailData = {
-        to: data.client_email,
-        subject: `You've been invited to project: ${data.project_name}`,
-        html: `
-          <h2>Project Invitation</h2>
-          <p>You have been invited to collaborate on a new project:</p>
-          <ul>
-            <li><strong>Project Name:</strong> ${data.project_name}</li>
-            <li><strong>Start Date:</strong> ${data.start_date}</li>
-            <li><strong>End Date:</strong> ${data.end_date}</li>
-          </ul>
-          <p>Please log in to TrustLayer to view project details and collaborate.</p>
-        `,
-      };
-
-      // For now, we'll log the email data (in a real app, you'd send this via an email service)
-      console.log('Email invitation would be sent:', emailData);
-
       toast({
         title: 'Success',
         description: `Project "${data.project_name}" created successfully! Email invitation sent to ${data.client_email}.`,
@@ -113,6 +128,7 @@ const AddProjectDialog: React.FC<AddProjectDialogProps> = ({ onProjectAdded }) =
       form.reset();
       setOpen(false);
       onProjectAdded?.();
+      refreshData(); // Refresh subscription data
     } catch (error) {
       console.error('Error creating project:', error);
       toast({
@@ -125,92 +141,124 @@ const AddProjectDialog: React.FC<AddProjectDialogProps> = ({ onProjectAdded }) =
     }
   };
 
+  const handleUpgradeSuccess = () => {
+    refreshData();
+  };
+
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>
-        <Button className="w-full justify-start" variant="default">
-          <Plus className="h-4 w-4 mr-2" />
-          Add New Project
-        </Button>
-      </DialogTrigger>
-      <DialogContent className="sm:max-w-[425px]">
-        <DialogHeader>
-          <DialogTitle>Create New Project</DialogTitle>
-          <DialogDescription>
-            Fill in the project details and invite a client to collaborate.
-          </DialogDescription>
-        </DialogHeader>
-        <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-            <FormField
-              control={form.control}
-              name="project_name"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Project Name</FormLabel>
-                  <FormControl>
-                    <Input placeholder="Enter project name" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
+    <>
+      <Dialog open={open} onOpenChange={setOpen}>
+        <DialogTrigger asChild>
+          <Button 
+            className="w-full justify-start" 
+            variant={canCreateProject ? "default" : "outline"}
+            onClick={handleCreateProject}
+            disabled={!hasActiveSubscription}
+          >
+            {canCreateProject ? (
+              <Plus className="h-4 w-4 mr-2" />
+            ) : (
+              <Lock className="h-4 w-4 mr-2" />
+            )}
+            {!hasActiveSubscription 
+              ? 'Subscribe to Create Projects' 
+              : availableCredits === 0 
+                ? 'Buy Credits to Create Projects'
+                : 'Add New Project'
+            }
+          </Button>
+        </DialogTrigger>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle>Create New Project</DialogTitle>
+            <DialogDescription>
+              Fill in the project details and invite a client to collaborate.
+              {availableCredits > 0 && (
+                <span className="block mt-1 text-green-600">
+                  Available credits: {availableCredits}
+                </span>
               )}
-            />
-            <FormField
-              control={form.control}
-              name="start_date"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Start Date</FormLabel>
-                  <FormControl>
-                    <Input type="date" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <FormField
-              control={form.control}
-              name="end_date"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>End Date</FormLabel>
-                  <FormControl>
-                    <Input type="date" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <FormField
-              control={form.control}
-              name="client_email"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Client Email</FormLabel>
-                  <FormControl>
-                    <Input type="email" placeholder="client@example.com" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <div className="flex justify-end space-x-2 pt-4">
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => setOpen(false)}
-                disabled={isSubmitting}
-              >
-                Cancel
-              </Button>
-              <Button type="submit" disabled={isSubmitting}>
-                {isSubmitting ? 'Creating...' : 'Create Project'}
-              </Button>
-            </div>
-          </form>
-        </Form>
-      </DialogContent>
-    </Dialog>
+            </DialogDescription>
+          </DialogHeader>
+          <Form {...form}>
+            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+              <FormField
+                control={form.control}
+                name="project_name"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Project Name</FormLabel>
+                    <FormControl>
+                      <Input placeholder="Enter project name" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="start_date"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Start Date</FormLabel>
+                    <FormControl>
+                      <Input type="date" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="end_date"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>End Date</FormLabel>
+                    <FormControl>
+                      <Input type="date" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="client_email"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Client Email</FormLabel>
+                    <FormControl>
+                      <Input type="email" placeholder="client@example.com" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <div className="flex justify-end space-x-2 pt-4">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setOpen(false)}
+                  disabled={isSubmitting}
+                >
+                  Cancel
+                </Button>
+                <Button type="submit" disabled={isSubmitting}>
+                  {isSubmitting ? 'Creating...' : 'Create Project'}
+                </Button>
+              </div>
+            </form>
+          </Form>
+        </DialogContent>
+      </Dialog>
+
+      <UpgradeDialog
+        open={upgradeOpen}
+        onOpenChange={setUpgradeOpen}
+        type={!hasActiveSubscription ? 'subscription' : 'project'}
+        onSuccess={handleUpgradeSuccess}
+      />
+    </>
   );
 };
 
