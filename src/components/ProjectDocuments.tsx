@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -53,11 +52,11 @@ const ProjectDocuments = ({ projectId, isContractor = false }: ProjectDocumentsP
     enabled: !!user && !!projectId,
   });
 
-  const handleDownload = async (document: ProjectDocument) => {
+  const handleDownload = async (doc: ProjectDocument) => {
     try {
       const { data, error } = await supabase.storage
         .from('project-documents')
-        .download(document.file_path);
+        .download(doc.file_path);
 
       if (error) throw error;
 
@@ -65,7 +64,7 @@ const ProjectDocuments = ({ projectId, isContractor = false }: ProjectDocumentsP
       const url = URL.createObjectURL(data);
       const a = document.createElement('a');
       a.href = url;
-      a.download = document.document_name;
+      a.download = doc.document_name;
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
@@ -73,7 +72,7 @@ const ProjectDocuments = ({ projectId, isContractor = false }: ProjectDocumentsP
 
       toast({
         title: 'Download started',
-        description: `${document.document_name} is downloading.`,
+        description: `${doc.document_name} is downloading.`,
       });
     } catch (error) {
       console.error('Error downloading document:', error);
