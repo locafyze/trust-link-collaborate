@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { useForm, useFieldArray } from 'react-hook-form';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
@@ -99,6 +98,13 @@ const CreateInvoiceDialog = () => {
   const calculateTotal = () => {
     const items = form.watch('items');
     return items.reduce((total, item) => total + item.amount, 0);
+  };
+
+  const formatIndianCurrency = (amount: number) => {
+    return new Intl.NumberFormat('en-IN', {
+      style: 'currency',
+      currency: 'INR',
+    }).format(amount);
   };
 
   const generateInvoiceHTML = (invoiceData: InvoiceFormData, selectedProject: any) => {
@@ -213,8 +219,8 @@ const CreateInvoiceDialog = () => {
             <div class="invoice-title">INVOICE</div>
             <div class="invoice-meta">
               <span><strong>Invoice #:</strong> ${invoiceData.invoice_number}</span>
-              <span><strong>Date:</strong> ${new Date(invoiceData.invoice_date).toLocaleDateString()}</span>
-              <span><strong>Due:</strong> ${new Date(invoiceData.due_date).toLocaleDateString()}</span>
+              <span><strong>Date:</strong> ${new Date(invoiceData.invoice_date).toLocaleDateString('en-IN')}</span>
+              <span><strong>Due:</strong> ${new Date(invoiceData.due_date).toLocaleDateString('en-IN')}</span>
             </div>
           </div>
           
@@ -251,13 +257,13 @@ const CreateInvoiceDialog = () => {
                 <tr>
                   <td>${item.description}</td>
                   <td>${item.quantity}</td>
-                  <td>$${item.rate.toFixed(2)}</td>
-                  <td class="amount">$${item.amount.toFixed(2)}</td>
+                  <td>${formatIndianCurrency(item.rate)}</td>
+                  <td class="amount">${formatIndianCurrency(item.amount)}</td>
                 </tr>
               `).join('')}
               <tr class="total-row">
                 <td colspan="3"><strong>Total Amount</strong></td>
-                <td class="amount"><strong>$${calculateTotal().toFixed(2)}</strong></td>
+                <td class="amount"><strong>${formatIndianCurrency(calculateTotal())}</strong></td>
               </tr>
             </tbody>
           </table>
@@ -280,7 +286,7 @@ const CreateInvoiceDialog = () => {
           
           <div style="margin-top: 50px; text-align: center; color: #666; font-size: 12px; border-top: 1px solid #ddd; padding-top: 20px;">
             <p>Thank you for your business!</p>
-            <p>This invoice was generated on ${new Date().toLocaleDateString()}</p>
+            <p>This invoice was generated on ${new Date().toLocaleDateString('en-IN')}</p>
           </div>
         </body>
       </html>
@@ -512,7 +518,7 @@ const CreateInvoiceDialog = () => {
                       <FormItem>
                         <FormLabel>Phone Number</FormLabel>
                         <FormControl>
-                          <Input {...field} placeholder="+1 (555) 123-4567" />
+                          <Input {...field} placeholder="+91 98765 43210" />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -526,7 +532,7 @@ const CreateInvoiceDialog = () => {
                       <FormItem className="md:col-span-2">
                         <FormLabel>Company Address</FormLabel>
                         <FormControl>
-                          <Textarea {...field} placeholder="123 Business St, City, State, ZIP" rows={2} />
+                          <Textarea {...field} placeholder="123 Business Street, City, State, PIN Code" rows={2} />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -538,9 +544,9 @@ const CreateInvoiceDialog = () => {
                     name="company_gstin"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>GSTIN (Optional)</FormLabel>
+                        <FormLabel>GSTIN (GST Registration Number)</FormLabel>
                         <FormControl>
-                          <Input {...field} placeholder="GST Registration Number" />
+                          <Input {...field} placeholder="22AAAAA0000A1Z5" />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -660,7 +666,7 @@ const CreateInvoiceDialog = () => {
                       name={`items.${index}.rate`}
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Rate ($)</FormLabel>
+                          <FormLabel>Rate (₹)</FormLabel>
                           <FormControl>
                             <Input
                               type="number"
@@ -685,7 +691,7 @@ const CreateInvoiceDialog = () => {
                       name={`items.${index}.amount`}
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Amount ($)</FormLabel>
+                          <FormLabel>Amount (₹)</FormLabel>
                           <FormControl>
                             <Input {...field} readOnly className="bg-gray-50" />
                           </FormControl>
@@ -709,7 +715,7 @@ const CreateInvoiceDialog = () => {
                 <div className="border-t pt-4">
                   <div className="flex justify-between items-center text-lg font-semibold">
                     <span>Total:</span>
-                    <span>${calculateTotal().toFixed(2)}</span>
+                    <span>{formatIndianCurrency(calculateTotal())}</span>
                   </div>
                 </div>
               </CardContent>
@@ -735,11 +741,13 @@ const CreateInvoiceDialog = () => {
                             </SelectTrigger>
                           </FormControl>
                           <SelectContent>
-                            <SelectItem value="bank_transfer">Bank Transfer</SelectItem>
+                            <SelectItem value="bank_transfer">Bank Transfer (NEFT/RTGS/IMPS)</SelectItem>
                             <SelectItem value="upi">UPI</SelectItem>
-                            <SelectItem value="paypal">PayPal</SelectItem>
-                            <SelectItem value="stripe">Stripe</SelectItem>
-                            <SelectItem value="check">Check</SelectItem>
+                            <SelectItem value="paytm">Paytm</SelectItem>
+                            <SelectItem value="phonepe">PhonePe</SelectItem>
+                            <SelectItem value="gpay">Google Pay</SelectItem>
+                            <SelectItem value="razorpay">Razorpay</SelectItem>
+                            <SelectItem value="check">Cheque</SelectItem>
                             <SelectItem value="cash">Cash</SelectItem>
                           </SelectContent>
                         </Select>
