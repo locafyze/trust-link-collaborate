@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
@@ -7,6 +8,7 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/component
 import MilestoneTimeline from '@/components/MilestoneTimeline';
 import PaymentOverviewCard from '@/components/PaymentOverviewCard';
 import ProjectDocuments from '@/components/ProjectDocuments';
+import ProjectChat from '@/components/ProjectChat';
 
 const ClientDashboard = () => {
   const { profile, signOut } = useAuth();
@@ -118,11 +120,11 @@ const ClientDashboard = () => {
             <MilestoneTimeline />
           </div>
 
-          {/* Active Projects with Documents */}
+          {/* Active Projects with Documents and Chat */}
           <Card className="lg:col-span-2">
             <CardHeader>
               <CardTitle>Active Projects</CardTitle>
-              <CardDescription>Your current construction projects and documents</CardDescription>
+              <CardDescription>Your current construction projects, documents, and communications</CardDescription>
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
@@ -163,11 +165,17 @@ const ClientDashboard = () => {
                       </div>
                       <Collapsible open={isExpanded} onOpenChange={() => toggleProjectExpansion(index)}>
                         <CollapsibleContent className="p-4 border-t">
-                          <ProjectDocuments 
-                            projectId={project.id} 
-                            projectName={project.name}
-                            isContractor={false} 
-                          />
+                          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                            <ProjectDocuments 
+                              projectId={project.id} 
+                              projectName={project.name}
+                              isContractor={false} 
+                            />
+                            <ProjectChat
+                              projectId={project.id}
+                              projectName={project.name}
+                            />
+                          </div>
                         </CollapsibleContent>
                       </Collapsible>
                     </div>

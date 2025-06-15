@@ -6,12 +6,13 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
-import { Calendar, User, DollarSign, ChevronDown, ChevronUp } from 'lucide-react';
+import { Calendar, User, DollarSign, ChevronDown, ChevronUp, MessageSquare } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import AddMilestoneDialog from './AddMilestoneDialog';
 import AddPaymentRequestDialog from './AddPaymentRequestDialog';
 import ProjectDocuments from './ProjectDocuments';
+import ProjectChat from './ProjectChat';
 
 interface Project {
   id: string;
@@ -323,11 +324,17 @@ const ProjectsList = () => {
                     {isExpanded && (
                       <TableRow>
                         <TableCell colSpan={6} className="p-4 bg-gray-50">
-                          <ProjectDocuments 
-                            projectId={project.id} 
-                            projectName={project.project_name}
-                            isContractor={true} 
-                          />
+                          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                            <ProjectDocuments 
+                              projectId={project.id} 
+                              projectName={project.project_name}
+                              isContractor={true} 
+                            />
+                            <ProjectChat
+                              projectId={project.id}
+                              projectName={project.project_name}
+                            />
+                          </div>
                         </TableCell>
                       </TableRow>
                     )}
