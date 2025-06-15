@@ -2,6 +2,8 @@
 import React, { useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import ProjectChat from '@/components/ProjectChat';
+import { useQueryClient } from '@tanstack/react-query';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface ProjectChatModalState {
   isOpen: boolean;
@@ -10,6 +12,8 @@ interface ProjectChatModalState {
 }
 
 export const useProjectChatModal = () => {
+  const { user } = useAuth();
+  const queryClient = useQueryClient();
   const [modalState, setModalState] = useState<ProjectChatModalState>({
     isOpen: false,
     projectId: null,
@@ -22,6 +26,13 @@ export const useProjectChatModal = () => {
       projectId,
       projectName
     });
+
+    // Clear notifications for this project when chat is opened
+    if (user?.id) {
+      queryClient.setQueryData(['notifications', user.id], (oldData: any[] = []) => {
+        return oldData.filter(notification => notification.project_id !== projectId);
+      });
+    }
   };
 
   const closeChat = () => {

@@ -127,6 +127,12 @@ const NotificationBell = ({ onNotificationClick }: NotificationBellProps) => {
 
   const handleNotificationClick = (projectId: string, projectName: string) => {
     onNotificationClick(projectId, projectName);
+    
+    // Remove notifications for this specific project
+    queryClient.setQueryData(['notifications', user?.id], (oldData: Notification[] = []) => {
+      return oldData.filter(notification => notification.project_id !== projectId);
+    });
+    
     setIsOpen(false);
   };
 
