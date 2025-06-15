@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
 import { Menu, X, Home, Calendar, DollarSign, MessageSquare, Settings } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
+import { useNavigate } from 'react-router-dom';
 import UserAvatar from './UserAvatar';
 import ThemeToggle from './ThemeToggle';
 
@@ -14,6 +15,7 @@ interface MobileNavigationProps {
 
 const MobileNavigation = ({ role }: MobileNavigationProps) => {
   const { profile, signOut } = useAuth();
+  const navigate = useNavigate();
   const [isOpen, setIsOpen] = useState(false);
 
   const navigationItems = role === 'contractor' 
@@ -22,14 +24,14 @@ const MobileNavigation = ({ role }: MobileNavigationProps) => {
         { icon: Calendar, label: 'Schedule', action: () => console.log('Navigate to schedule') },
         { icon: DollarSign, label: 'Payments', action: () => console.log('Navigate to payments') },
         { icon: MessageSquare, label: 'Messages', action: () => console.log('Navigate to messages') },
-        { icon: Settings, label: 'Settings', action: () => console.log('Navigate to settings') },
+        { icon: Settings, label: 'Settings', action: () => navigate('/settings') },
       ]
     : [
         { icon: Home, label: 'Projects', action: () => console.log('Navigate to projects') },
         { icon: Calendar, label: 'Timeline', action: () => console.log('Navigate to timeline') },
         { icon: DollarSign, label: 'Invoices', action: () => console.log('Navigate to invoices') },
         { icon: MessageSquare, label: 'Messages', action: () => console.log('Navigate to messages') },
-        { icon: Settings, label: 'Settings', action: () => console.log('Navigate to settings') },
+        { icon: Settings, label: 'Settings', action: () => navigate('/settings') },
       ];
 
   return (
