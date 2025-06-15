@@ -5,12 +5,13 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Shield, Briefcase, Calendar, DollarSign, Users, Settings } from 'lucide-react';
 import AddProjectDialog from '@/components/AddProjectDialog';
+import ProjectsList from '@/components/ProjectsList';
 
 const ContractorDashboard = () => {
   const { profile, signOut } = useAuth();
 
   const handleProjectAdded = () => {
-    // Refresh projects list or update UI as needed
+    // This will trigger a refetch of projects in the ProjectsList component
     console.log('Project added successfully');
   };
 
@@ -91,13 +92,18 @@ const ContractorDashboard = () => {
           </Card>
         </div>
 
+        {/* Projects List - Full Width */}
+        <div className="mb-8">
+          <ProjectsList />
+        </div>
+
         {/* Dashboard Content */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
           {/* Recent Projects */}
           <Card>
             <CardHeader>
-              <CardTitle>Recent Projects</CardTitle>
-              <CardDescription>Your latest project activities</CardDescription>
+              <CardTitle>Recent Activity</CardTitle>
+              <CardDescription>Latest project updates and milestones</CardDescription>
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
