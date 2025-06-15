@@ -39,7 +39,7 @@ const NotificationBell = ({ onNotificationClick }: NotificationBellProps) => {
     queryFn: async () => {
       if (!user?.id || !profile) return [];
 
-      const { data, error } = await supabase
+      let query = supabase
         .from('messages')
         .select(`
           id,
@@ -47,12 +47,20 @@ const NotificationBell = ({ onNotificationClick }: NotificationBellProps) => {
           sender_type,
           message_content,
           created_at,
-          projects!inner(project_name)
+          projects!inner(project_name, contractor_id, client_email)
         `)
         .neq('sender_id', user.id)
-        .eq('projects.contractor_id', profile.role === 'contractor' ? user.id : null)
         .order('created_at', { ascending: false })
         .limit(10);
+
+      // Filter based on user role
+      if (profile.role === 'contractor') {
+        query = query.eq('projects.contractor_id', user.id);
+      } else if (profile.role === 'client') {
+        query = query.eq('projects.client_email', profile.email);
+      }
+
+      const { data, error } = await query;
 
       if (error) throw error;
 
@@ -66,12 +74,12 @@ const NotificationBell = ({ onNotificationClick }: NotificationBellProps) => {
         is_read: false
       })) as Notification[];
     },
-    enabled: !!user && !!profile && profile.role === 'contractor',
+    enabled: !!user && !!profile,
   });
 
   // Set up real-time subscription for new messages
   useEffect(() => {
-    if (!user?.id || !profile || profile.role !== 'contractor') return;
+    if (!user?.id || !profile) return;
 
     const channel = supabase
       .channel('message-notifications')
@@ -89,30 +97,35 @@ const NotificationBell = ({ onNotificationClick }: NotificationBellProps) => {
           // Get project details for the notification
           const { data: project } = await supabase
             .from('projects')
-            .select('project_name, contractor_id')
+            .select('project_name, contractor_id, client_email')
             .eq('id', payload.new.project_id)
-            .eq('contractor_id', user.id)
             .single();
 
           if (project) {
-            // Show toast notification
-            toast({
-              title: 'New Message',
-              description: `New message in ${project.project_name}`,
-              action: (
-                <Button
-                  size="sm"
-                  onClick={() => {
-                    onNotificationClick(payload.new.project_id, project.project_name);
-                  }}
-                >
-                  View
-                </Button>
-              ),
-            });
+            // Check if this notification is relevant for the current user
+            const isRelevant = (profile.role === 'contractor' && project.contractor_id === user.id) ||
+                              (profile.role === 'client' && project.client_email === profile.email);
 
-            // Invalidate notifications query to update the bell
-            queryClient.invalidateQueries({ queryKey: ['notifications', user.id] });
+            if (isRelevant) {
+              // Show toast notification
+              toast({
+                title: 'New Message',
+                description: `New message in ${project.project_name}`,
+                action: (
+                  <Button
+                    size="sm"
+                    onClick={() => {
+                      onNotificationClick(payload.new.project_id, project.project_name);
+                    }}
+                  >
+                    View
+                  </Button>
+                ),
+              });
+
+              // Invalidate notifications query to update the bell
+              queryClient.invalidateQueries({ queryKey: ['notifications', user.id] });
+            }
           }
         }
       )
@@ -141,7 +154,8 @@ const NotificationBell = ({ onNotificationClick }: NotificationBellProps) => {
     setIsOpen(false);
   };
 
-  if (profile?.role !== 'contractor') return null;
+  // Show notification bell for both roles
+  if (!profile) return null;
 
   return (
     <Popover open={isOpen} onOpenChange={setIsOpen}>
