@@ -101,12 +101,8 @@ const CreateInvoiceDialog = () => {
     return items.reduce((total, item) => total + item.amount, 0);
   };
 
-  const generateInvoicePDF = async (invoiceData: InvoiceFormData) => {
-    const selectedProject = projects?.find(p => p.id === invoiceData.project_id);
-    if (!selectedProject) throw new Error('Project not found');
-
-    // Create HTML content for the invoice
-    const htmlContent = `
+  const generateInvoiceHTML = (invoiceData: InvoiceFormData, selectedProject: any) => {
+    return `
       <!DOCTYPE html>
       <html>
         <head>
@@ -289,44 +285,49 @@ const CreateInvoiceDialog = () => {
         </body>
       </html>
     `;
-
-    // Convert HTML to PDF (using browser's print functionality)
-    const printWindow = window.open('', '_blank');
-    if (!printWindow) throw new Error('Could not open print window');
-    
-    printWindow.document.write(htmlContent);
-    printWindow.document.close();
-    
-    // Wait for content to load, then trigger print
-    setTimeout(() => {
-      printWindow.print();
-    }, 500);
-
-    return `invoice-${invoiceData.invoice_number}.pdf`;
   };
 
   const createInvoiceMutation = useMutation({
     mutationFn: async (data: InvoiceFormData) => {
       if (!user?.id) throw new Error('User not authenticated');
 
+      const selectedProject = projects?.find(p => p.id === data.project_id);
+      if (!selectedProject) throw new Error('Project not found');
+
       setIsGenerating(true);
       
       try {
-        // Generate the PDF
-        const fileName = await generateInvoicePDF(data);
+        // Generate the HTML content for the invoice
+        const htmlContent = generateInvoiceHTML(data, selectedProject);
         
+        // Convert HTML to blob
+        const blob = new Blob([htmlContent], { type: 'text/html' });
+        const fileName = `invoice-${data.invoice_number}.html`;
+        const filePath = `invoices/${user.id}/${fileName}`;
+
+        // Upload the invoice file to Supabase storage
+        const { error: uploadError } = await supabase.storage
+          .from('project-documents')
+          .upload(filePath, blob, {
+            contentType: 'text/html',
+            upsert: false
+          });
+
+        if (uploadError) throw uploadError;
+
         // Create a document record in the database
-        const { error } = await supabase
+        const { error: dbError } = await supabase
           .from('project_documents')
           .insert({
             project_id: data.project_id,
             document_name: fileName,
             document_type: 'invoice',
-            file_path: `invoices/${fileName}`,
+            file_path: filePath,
+            file_size: blob.size,
             uploaded_by: user.id,
           });
 
-        if (error) throw error;
+        if (dbError) throw dbError;
 
         return data;
       } finally {
@@ -335,9 +336,10 @@ const CreateInvoiceDialog = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['project-documents'] });
+      queryClient.invalidateQueries({ queryKey: ['client-invoices'] });
       toast({
-        title: 'Invoice Created',
-        description: 'Professional invoice has been generated and saved to the project.',
+        title: 'Invoice Created & Sent',
+        description: 'Professional invoice has been created and sent to the client. They can now view it in their dashboard.',
       });
       setOpen(false);
       form.reset();
@@ -394,7 +396,7 @@ const CreateInvoiceDialog = () => {
             Create Professional Invoice
           </DialogTitle>
           <DialogDescription>
-            Generate a comprehensive business invoice with all professional details.
+            Generate a comprehensive business invoice that will be automatically sent to your client.
           </DialogDescription>
         </DialogHeader>
 
@@ -804,7 +806,7 @@ const CreateInvoiceDialog = () => {
                 type="submit" 
                 disabled={createInvoiceMutation.isPending || isGenerating}
               >
-                {isGenerating ? 'Generating Invoice...' : 'Create Professional Invoice'}
+                {isGenerating ? 'Creating & Sending Invoice...' : 'Create & Send Invoice'}
               </Button>
             </div>
           </form>
