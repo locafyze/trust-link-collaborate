@@ -1,9 +1,8 @@
-
 import React, { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Home, MessageSquare, DollarSign, Settings } from 'lucide-react';
+import { MessageSquare, DollarSign, Settings } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -92,14 +91,6 @@ const ClientQuickActions = () => {
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-1 gap-3">
-            <Button 
-              className="w-full justify-start" 
-              variant="outline"
-              onClick={handleStartNewProject}
-            >
-              <Home className="h-4 w-4 mr-2" />
-              Start New Project
-            </Button>
             <Button 
               className="w-full justify-start" 
               variant="outline"
