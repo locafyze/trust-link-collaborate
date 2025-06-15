@@ -8,6 +8,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { Calendar, User } from 'lucide-react';
+import AddMilestoneDialog from './AddMilestoneDialog';
 
 interface Project {
   id: string;
@@ -15,6 +16,16 @@ interface Project {
   start_date: string;
   end_date: string;
   client_email: string;
+  created_at: string;
+}
+
+interface Milestone {
+  id: string;
+  project_id: string;
+  title: string;
+  description: string | null;
+  media_url: string | null;
+  media_type: string | null;
   created_at: string;
 }
 
@@ -43,6 +54,30 @@ const ProjectsList = () => {
     enabled: !!user?.id,
   });
 
+  const { data: milestones } = useQuery({
+    queryKey: ['project-milestones', user?.id],
+    queryFn: async () => {
+      console.log('Fetching milestones for contractor projects:', user?.id);
+      
+      const { data, error } = await supabase
+        .from('milestones')
+        .select(`
+          *,
+          projects!inner(contractor_id)
+        `)
+        .eq('projects.contractor_id', user?.id);
+
+      if (error) {
+        console.error('Error fetching milestones:', error);
+        throw error;
+      }
+
+      console.log('Fetched milestones:', data);
+      return data as Milestone[];
+    },
+    enabled: !!user?.id,
+  });
+
   const getProjectStatus = (project: Project) => {
     const now = new Date();
     const startDate = new Date(project.start_date);
@@ -58,17 +93,33 @@ const ProjectsList = () => {
   };
 
   const getMilestoneProgress = (project: Project) => {
-    // Mock milestone calculation based on time elapsed
+    if (!milestones) return 0;
+    
+    const projectMilestones = milestones.filter(m => m.project_id === project.id);
+    const milestoneCount = projectMilestones.length;
+    
+    if (milestoneCount === 0) return 0;
+    
+    // For now, we'll calculate progress based on time elapsed vs milestones added
+    // This is a simple approach - in a real app, you might have completion status per milestone
     const now = new Date();
     const startDate = new Date(project.start_date);
     const endDate = new Date(project.end_date);
     const totalDuration = endDate.getTime() - startDate.getTime();
     const elapsed = now.getTime() - startDate.getTime();
     
-    if (elapsed < 0) return 0; // Project hasn't started
-    if (elapsed > totalDuration) return 100; // Project is complete
+    if (elapsed < 0) return 0;
+    if (elapsed > totalDuration) return 100;
     
-    return Math.round((elapsed / totalDuration) * 100);
+    const timeProgress = (elapsed / totalDuration) * 100;
+    const milestoneBonus = Math.min(milestoneCount * 10, 30); // Up to 30% bonus for milestones
+    
+    return Math.min(Math.round(timeProgress + milestoneBonus), 100);
+  };
+
+  const getMilestoneCount = (projectId: string) => {
+    if (!milestones) return 0;
+    return milestones.filter(m => m.project_id === projectId).length;
   };
 
   if (isLoading) {
@@ -130,17 +181,24 @@ const ProjectsList = () => {
               <TableHead>Status</TableHead>
               <TableHead>Progress</TableHead>
               <TableHead>Timeline</TableHead>
+              <TableHead>Actions</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {projects.map((project) => {
               const { status, variant } = getProjectStatus(project);
               const progress = getMilestoneProgress(project);
+              const milestoneCount = getMilestoneCount(project.id);
               
               return (
                 <TableRow key={project.id}>
                   <TableCell className="font-medium">
-                    {project.project_name}
+                    <div>
+                      <div>{project.project_name}</div>
+                      <div className="text-sm text-gray-500">
+                        {milestoneCount} milestone{milestoneCount !== 1 ? 's' : ''}
+                      </div>
+                    </div>
                   </TableCell>
                   <TableCell>
                     <div className="flex items-center">
@@ -162,6 +220,9 @@ const ProjectsList = () => {
                       <Calendar className="h-4 w-4 mr-2" />
                       {new Date(project.start_date).toLocaleDateString()} - {new Date(project.end_date).toLocaleDateString()}
                     </div>
+                  </TableCell>
+                  <TableCell>
+                    <AddMilestoneDialog projectId={project.id} />
                   </TableCell>
                 </TableRow>
               );
