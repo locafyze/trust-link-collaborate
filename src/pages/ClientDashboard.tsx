@@ -53,7 +53,7 @@ const ClientDashboard = () => {
       {/* Main Content */}
       <main className="container mx-auto px-4 py-6">
         <div className="space-y-6">
-          <WelcomeMessage />
+          <WelcomeMessage name={profile?.full_name} role="client" />
           
           <div className="grid gap-6 lg:grid-cols-3">
             <div className="lg:col-span-2 space-y-6">

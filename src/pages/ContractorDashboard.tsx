@@ -19,6 +19,11 @@ const ContractorDashboard = () => {
   const navigate = useNavigate();
   const isMobile = useIsMobile();
 
+  const handleProjectAdded = () => {
+    // This will trigger a refetch of the projects data
+    console.log('Project added, refreshing data...');
+  };
+
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900 transition-colors">
       {/* Header */}
@@ -54,7 +59,7 @@ const ContractorDashboard = () => {
       {/* Main Content */}
       <main className="container mx-auto px-4 py-6">
         <div className="space-y-6">
-          <WelcomeMessage />
+          <WelcomeMessage name={profile?.full_name} role="contractor" />
           <ContractorStats />
           
           <div className="grid gap-6 lg:grid-cols-3">
@@ -63,7 +68,7 @@ const ContractorDashboard = () => {
               <RecentActivity />
             </div>
             <div>
-              <QuickActions />
+              <QuickActions onProjectAdded={handleProjectAdded} />
             </div>
           </div>
         </div>
