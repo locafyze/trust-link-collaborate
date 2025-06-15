@@ -202,7 +202,7 @@ const AddMilestoneDialog: React.FC<AddMilestoneDialogProps> = ({
             <FormField
               control={form.control}
               name="media"
-              render={({ field: { onChange, name, ...field } }) => (
+              render={({ field: { onChange, name } }) => (
                 <FormItem>
                   <FormLabel>Photo/Video (Optional)</FormLabel>
                   <FormControl>
@@ -213,7 +213,6 @@ const AddMilestoneDialog: React.FC<AddMilestoneDialogProps> = ({
                         accept="image/*,video/*"
                         onChange={(e) => onChange(e.target.files)}
                         className="flex-1"
-                        {...field}
                       />
                       <Upload className="h-4 w-4 text-gray-500" />
                     </div>
