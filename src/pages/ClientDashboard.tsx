@@ -3,33 +3,14 @@ import React from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Shield, Home, Calendar, DollarSign, MessageSquare, Settings, ChevronDown, ChevronUp } from 'lucide-react';
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+import { Shield, Home, Calendar, DollarSign, MessageSquare } from 'lucide-react';
 import MilestoneTimeline from '@/components/MilestoneTimeline';
 import PaymentOverviewCard from '@/components/PaymentOverviewCard';
-import ProjectDocuments from '@/components/ProjectDocuments';
-import ProjectChat from '@/components/ProjectChat';
+import ClientProjectsList from '@/components/ClientProjectsList';
+import ClientQuickActions from '@/components/ClientQuickActions';
 
 const ClientDashboard = () => {
   const { profile, signOut } = useAuth();
-  const [expandedProjects, setExpandedProjects] = React.useState<Set<number>>(new Set());
-
-  const toggleProjectExpansion = (index: number) => {
-    const newExpanded = new Set(expandedProjects);
-    if (newExpanded.has(index)) {
-      newExpanded.delete(index);
-    } else {
-      newExpanded.add(index);
-    }
-    setExpandedProjects(newExpanded);
-  };
-
-  // Mock project data with IDs - in a real app, this would come from the database
-  const mockProjects = [
-    { id: '1', name: 'Kitchen Renovation', contractor: 'Elite Builders', status: 'In Progress', progress: 60, budget: '$35,000' },
-    { id: '2', name: 'Bathroom Remodel', contractor: 'Modern Homes', status: 'Planning', progress: 15, budget: '$18,000' },
-    { id: '3', name: 'Deck Installation', contractor: 'Outdoor Pro', status: 'Starting Soon', progress: 0, budget: '$12,000' },
-  ];
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -109,113 +90,26 @@ const ClientDashboard = () => {
         </div>
 
         {/* Dashboard Content */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-          {/* Payment Overview Card */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+          {/* Active Projects List - Takes 2 columns */}
           <div className="lg:col-span-2">
+            <ClientProjectsList />
+          </div>
+
+          {/* Quick Actions - Takes 1 column */}
+          <div className="space-y-6">
+            <ClientQuickActions />
+          </div>
+
+          {/* Payment Overview - Full width */}
+          <div className="lg:col-span-3">
             <PaymentOverviewCard />
           </div>
 
-          {/* Project Timeline */}
-          <div className="lg:col-span-2">
+          {/* Project Timeline - Full width */}
+          <div className="lg:col-span-3">
             <MilestoneTimeline />
           </div>
-
-          {/* Active Projects with Documents and Chat */}
-          <Card className="lg:col-span-2">
-            <CardHeader>
-              <CardTitle>Active Projects</CardTitle>
-              <CardDescription>Your current construction projects, documents, and communications</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                {mockProjects.map((project, index) => {
-                  const isExpanded = expandedProjects.has(index);
-                  return (
-                    <div key={index} className="border rounded-lg">
-                      <div className="flex items-center justify-between p-3 bg-gray-50">
-                        <div className="flex items-center space-x-3">
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => toggleProjectExpansion(index)}
-                            className="p-1"
-                          >
-                            {isExpanded ? (
-                              <ChevronUp className="h-4 w-4" />
-                            ) : (
-                              <ChevronDown className="h-4 w-4" />
-                            )}
-                          </Button>
-                          <div>
-                            <h4 className="font-medium">{project.name}</h4>
-                            <p className="text-sm text-gray-600">{project.contractor}</p>
-                            <p className="text-sm text-blue-600 font-medium">{project.budget}</p>
-                          </div>
-                        </div>
-                        <div className="text-right">
-                          <span className={`px-2 py-1 rounded-full text-xs ${
-                            project.status === 'In Progress' ? 'bg-blue-100 text-blue-800' :
-                            project.status === 'Planning' ? 'bg-yellow-100 text-yellow-800' :
-                            'bg-gray-100 text-gray-800'
-                          }`}>
-                            {project.status}
-                          </span>
-                          <div className="text-sm text-gray-600 mt-1">{project.progress}% Complete</div>
-                        </div>
-                      </div>
-                      <Collapsible open={isExpanded} onOpenChange={() => toggleProjectExpansion(index)}>
-                        <CollapsibleContent className="p-4 border-t">
-                          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                            <ProjectDocuments 
-                              projectId={project.id} 
-                              projectName={project.name}
-                              isContractor={false} 
-                            />
-                            <ProjectChat
-                              projectId={project.id}
-                              projectName={project.name}
-                            />
-                          </div>
-                        </CollapsibleContent>
-                      </Collapsible>
-                    </div>
-                  );
-                })}
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Quick Actions */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Quick Actions</CardTitle>
-              <CardDescription>Manage your projects and communications</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-1 gap-3">
-                <Button className="w-full justify-start" variant="outline">
-                  <Home className="h-4 w-4 mr-2" />
-                  Start New Project
-                </Button>
-                <Button className="w-full justify-start" variant="outline">
-                  <MessageSquare className="h-4 w-4 mr-2" />
-                  Message Contractor
-                </Button>
-                <Button className="w-full justify-start" variant="outline">
-                  <Calendar className="h-4 w-4 mr-2" />
-                  Schedule Site Visit
-                </Button>
-                <Button className="w-full justify-start" variant="outline">
-                  <DollarSign className="h-4 w-4 mr-2" />
-                  View Invoices
-                </Button>
-                <Button className="w-full justify-start" variant="outline">
-                  <Settings className="h-4 w-4 mr-2" />
-                  Account Settings
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
         </div>
       </main>
     </div>
