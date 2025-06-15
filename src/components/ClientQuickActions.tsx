@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -73,18 +72,6 @@ const ClientQuickActions = () => {
     }
   };
 
-  const handleScheduleSiteVisit = () => {
-    // Open email for site visit scheduling
-    const subject = encodeURIComponent('Site Visit Request');
-    const body = encodeURIComponent('Hi,\n\nI would like to schedule a site visit for our project. Please let me know your availability.\n\nThank you!');
-    window.open(`mailto:?subject=${subject}&body=${body}`, '_blank');
-    
-    toast({
-      title: "Site Visit Email Created",
-      description: "Your email client has opened with a site visit request template.",
-    });
-  };
-
   const handleViewInvoices = () => {
     // For now, show info about invoices
     toast({
@@ -121,14 +108,6 @@ const ClientQuickActions = () => {
             >
               <MessageSquare className="h-4 w-4 mr-2" />
               Message Contractor
-            </Button>
-            <Button 
-              className="w-full justify-start" 
-              variant="outline"
-              onClick={handleScheduleSiteVisit}
-            >
-              <Calendar className="h-4 w-4 mr-2" />
-              Schedule Site Visit
             </Button>
             <Button 
               className="w-full justify-start" 
