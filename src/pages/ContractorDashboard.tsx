@@ -13,15 +13,23 @@ import RecentActivity from '@/components/RecentActivity';
 import WelcomeMessage from '@/components/WelcomeMessage';
 import MobileNavigation from '@/components/MobileNavigation';
 import ThemeToggle from '@/components/ThemeToggle';
+import NotificationBell from '@/components/NotificationBell';
+import { useProjectChatModal } from '@/hooks/useProjectChatModal';
 
 const ContractorDashboard = () => {
   const { profile, signOut } = useAuth();
   const navigate = useNavigate();
   const isMobile = useIsMobile();
+  const { openChat, ChatModal } = useProjectChatModal();
 
   const handleProjectAdded = () => {
     // This will trigger a refetch of the projects data
     console.log('Project added, refreshing data...');
+  };
+
+  const handleNotificationClick = (projectId: string, projectName: string) => {
+    console.log('Opening chat for project:', projectName);
+    openChat(projectId, projectName);
   };
 
   return (
@@ -41,6 +49,7 @@ const ContractorDashboard = () => {
               </h1>
             </div>
             <div className="flex items-center space-x-3">
+              <NotificationBell onNotificationClick={handleNotificationClick} />
               {!isMobile && (
                 <Button variant="outline" onClick={() => navigate('/settings')}>
                   <Settings className="h-4 w-4 mr-2" />
@@ -73,6 +82,9 @@ const ContractorDashboard = () => {
           </div>
         </div>
       </main>
+
+      {/* Chat Modal */}
+      <ChatModal />
     </div>
   );
 };
