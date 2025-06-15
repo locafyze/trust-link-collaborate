@@ -4,9 +4,15 @@ import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Shield, Briefcase, Calendar, DollarSign, Users, Settings } from 'lucide-react';
+import AddProjectDialog from '@/components/AddProjectDialog';
 
 const ContractorDashboard = () => {
   const { profile, signOut } = useAuth();
+
+  const handleProjectAdded = () => {
+    // Refresh projects list or update UI as needed
+    console.log('Project added successfully');
+  };
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -129,10 +135,7 @@ const ContractorDashboard = () => {
             </CardHeader>
             <CardContent>
               <div className="grid grid-cols-1 gap-3">
-                <Button className="w-full justify-start" variant="outline">
-                  <Briefcase className="h-4 w-4 mr-2" />
-                  Create New Project
-                </Button>
+                <AddProjectDialog onProjectAdded={handleProjectAdded} />
                 <Button className="w-full justify-start" variant="outline">
                   <Calendar className="h-4 w-4 mr-2" />
                   Schedule Meeting
