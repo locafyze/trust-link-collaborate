@@ -2,10 +2,11 @@
 import React from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Calendar, DollarSign, Settings } from 'lucide-react';
+import { Calendar, Settings } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from '@/hooks/use-toast';
 import AddProjectDialog from './AddProjectDialog';
+import CreateInvoiceDialog from './CreateInvoiceDialog';
 
 interface QuickActionsProps {
   onProjectAdded: () => void;
@@ -26,14 +27,6 @@ const QuickActions = ({ onProjectAdded }: QuickActionsProps) => {
     });
   };
 
-  const handleSendInvoice = () => {
-    // For now, show a simple form or redirect to invoice creation
-    toast({
-      title: "Invoice Feature",
-      description: "Invoice creation feature is being developed. You can use external invoicing tools for now.",
-    });
-  };
-
   const handleManageProfile = () => {
     navigate('/settings');
   };
@@ -47,6 +40,7 @@ const QuickActions = ({ onProjectAdded }: QuickActionsProps) => {
       <CardContent>
         <div className="grid grid-cols-1 gap-3">
           <AddProjectDialog onProjectAdded={onProjectAdded} />
+          <CreateInvoiceDialog />
           <Button 
             className="w-full justify-start" 
             variant="outline"
@@ -54,14 +48,6 @@ const QuickActions = ({ onProjectAdded }: QuickActionsProps) => {
           >
             <Calendar className="h-4 w-4 mr-2" />
             Schedule Meeting
-          </Button>
-          <Button 
-            className="w-full justify-start" 
-            variant="outline"
-            onClick={handleSendInvoice}
-          >
-            <DollarSign className="h-4 w-4 mr-2" />
-            Send Invoice
           </Button>
           <Button 
             className="w-full justify-start" 
