@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -5,13 +6,15 @@ import { useAuth } from '@/contexts/AuthContext';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
-import { FileText, Download, Calendar, User, ChevronDown, ChevronRight } from 'lucide-react';
+import { FileText, Download, Calendar, User, ChevronDown, ChevronRight, CheckCircle2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import DocumentUpload from './DocumentUpload';
+import ContractSigningToggle from './ContractSigningToggle';
 import { Badge } from '@/components/ui/badge';
 
 interface ProjectDocumentsProps {
   projectId: string;
+  projectName?: string;
   isContractor?: boolean;
 }
 
@@ -23,10 +26,13 @@ interface ProjectDocument {
   file_size: number;
   uploaded_by: string;
   created_at: string;
+  is_signed: boolean;
+  signed_at: string | null;
+  signed_by: string | null;
 }
 
-const ProjectDocuments = ({ projectId, isContractor = false }: ProjectDocumentsProps) => {
-  const { user } = useAuth();
+const ProjectDocuments = ({ projectId, projectName, isContractor = false }: ProjectDocumentsProps) => {
+  const { user, profile } = useAuth();
   const { toast } = useToast();
   const [isOpen, setIsOpen] = React.useState(false);
 
@@ -84,20 +90,21 @@ const ProjectDocuments = ({ projectId, isContractor = false }: ProjectDocumentsP
     }
   };
 
-  const getDocumentTypeColor = (type: string) => {
-    switch (type) {
-      case 'contract':
-        return 'bg-blue-100 text-blue-800';
-      case 'invoice':
-        return 'bg-green-100 text-green-800';
-      default:
-        return 'bg-gray-100 text-gray-800';
+  const getDocumentTypeColor = (type: string, isSigned?: boolean) => {
+    if (type === 'contract') {
+      return isSigned ? 'bg-green-100 text-green-800' : 'bg-blue-100 text-blue-800';
     }
+    if (type === 'invoice') {
+      return 'bg-purple-100 text-purple-800';
+    }
+    return 'bg-gray-100 text-gray-800';
   };
 
   const formatFileSize = (bytes: number) => {
     return (bytes / 1024 / 1024).toFixed(2) + ' MB';
   };
+
+  const isClient = profile?.role === 'client';
 
   if (isLoading) {
     return (
@@ -117,6 +124,8 @@ const ProjectDocuments = ({ projectId, isContractor = false }: ProjectDocumentsP
     );
   }
 
+  const signedContracts = documents?.filter(doc => doc.document_type === 'contract' && doc.is_signed) || [];
+
   return (
     <Card>
       <CardHeader>
@@ -127,6 +136,12 @@ const ProjectDocuments = ({ projectId, isContractor = false }: ProjectDocumentsP
             {documents && documents.length > 0 && (
               <Badge variant="secondary" className="ml-2">
                 {documents.length}
+              </Badge>
+            )}
+            {signedContracts.length > 0 && (
+              <Badge className="ml-2 bg-green-100 text-green-800">
+                <CheckCircle2 className="h-3 w-3 mr-1" />
+                {signedContracts.length} Signed
               </Badge>
             )}
           </CardTitle>
@@ -155,31 +170,44 @@ const ProjectDocuments = ({ projectId, isContractor = false }: ProjectDocumentsP
               </Button>
             </CollapsibleTrigger>
             <CollapsibleContent className="space-y-3 mt-4">
-              {documents.map((document) => (
+              {documents.map((doc) => (
                 <div
-                  key={document.id}
+                  key={doc.id}
                   className="flex items-center justify-between p-3 bg-gray-50 rounded-lg border"
                 >
                   <div className="flex items-center space-x-3">
                     <FileText className="h-8 w-8 text-red-600" />
                     <div>
-                      <h4 className="font-medium text-sm">{document.document_name}</h4>
+                      <h4 className="font-medium text-sm">{doc.document_name}</h4>
                       <div className="flex items-center space-x-2 text-xs text-gray-500">
-                        <Badge className={getDocumentTypeColor(document.document_type)}>
-                          {document.document_type}
+                        <Badge className={getDocumentTypeColor(doc.document_type, doc.is_signed)}>
+                          {doc.document_type}
+                          {doc.document_type === 'contract' && doc.is_signed && (
+                            <CheckCircle2 className="h-3 w-3 ml-1" />
+                          )}
                         </Badge>
                         <span className="flex items-center">
                           <Calendar className="h-3 w-3 mr-1" />
-                          {new Date(document.created_at).toLocaleDateString()}
+                          {new Date(doc.created_at).toLocaleDateString()}
                         </span>
-                        <span>{formatFileSize(document.file_size)}</span>
+                        <span>{formatFileSize(doc.file_size)}</span>
                       </div>
+                      {isClient && (
+                        <div className="mt-2">
+                          <ContractSigningToggle 
+                            document={doc}
+                            projectId={projectId}
+                            projectName={projectName || 'Project'}
+                            onSigningUpdate={refetch}
+                          />
+                        </div>
+                      )}
                     </div>
                   </div>
                   <Button
                     variant="outline"
                     size="sm"
-                    onClick={() => handleDownload(document)}
+                    onClick={() => handleDownload(doc)}
                   >
                     <Download className="h-4 w-4 mr-1" />
                     Download

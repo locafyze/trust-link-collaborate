@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
@@ -164,7 +163,11 @@ const ClientDashboard = () => {
                       </div>
                       <Collapsible open={isExpanded} onOpenChange={() => toggleProjectExpansion(index)}>
                         <CollapsibleContent className="p-4 border-t">
-                          <ProjectDocuments projectId={project.id} isContractor={false} />
+                          <ProjectDocuments 
+                            projectId={project.id} 
+                            projectName={project.name}
+                            isContractor={false} 
+                          />
                         </CollapsibleContent>
                       </Collapsible>
                     </div>

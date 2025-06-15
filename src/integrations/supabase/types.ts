@@ -123,7 +123,10 @@ export type Database = {
           file_path: string
           file_size: number | null
           id: string
+          is_signed: boolean | null
           project_id: string
+          signed_at: string | null
+          signed_by: string | null
           updated_at: string
           uploaded_by: string
         }
@@ -134,7 +137,10 @@ export type Database = {
           file_path: string
           file_size?: number | null
           id?: string
+          is_signed?: boolean | null
           project_id: string
+          signed_at?: string | null
+          signed_by?: string | null
           updated_at?: string
           uploaded_by: string
         }
@@ -145,7 +151,10 @@ export type Database = {
           file_path?: string
           file_size?: number | null
           id?: string
+          is_signed?: boolean | null
           project_id?: string
+          signed_at?: string | null
+          signed_by?: string | null
           updated_at?: string
           uploaded_by?: string
         }

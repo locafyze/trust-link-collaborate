@@ -323,7 +323,11 @@ const ProjectsList = () => {
                     {isExpanded && (
                       <TableRow>
                         <TableCell colSpan={6} className="p-4 bg-gray-50">
-                          <ProjectDocuments projectId={project.id} isContractor={true} />
+                          <ProjectDocuments 
+                            projectId={project.id} 
+                            projectName={project.project_name}
+                            isContractor={true} 
+                          />
                         </TableCell>
                       </TableRow>
                     )}
