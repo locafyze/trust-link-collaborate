@@ -7,8 +7,9 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
-import { Calendar, User } from 'lucide-react';
+import { Calendar, User, DollarSign } from 'lucide-react';
 import AddMilestoneDialog from './AddMilestoneDialog';
+import AddPaymentRequestDialog from './AddPaymentRequestDialog';
 
 interface Project {
   id: string;
@@ -27,6 +28,13 @@ interface Milestone {
   media_url: string | null;
   media_type: string | null;
   created_at: string;
+}
+
+interface PaymentRequest {
+  id: string;
+  milestone_id: string;
+  amount: number;
+  status: string;
 }
 
 const ProjectsList = () => {
@@ -78,6 +86,31 @@ const ProjectsList = () => {
     enabled: !!user?.id,
   });
 
+  const { data: paymentRequests } = useQuery({
+    queryKey: ['payment-requests-overview', user?.id],
+    queryFn: async () => {
+      console.log('Fetching payment requests overview:', user?.id);
+      
+      const { data, error } = await supabase
+        .from('payment_requests')
+        .select(`
+          *,
+          milestones!inner(
+            projects!inner(contractor_id)
+          )
+        `)
+        .eq('milestones.projects.contractor_id', user?.id);
+
+      if (error) {
+        console.error('Error fetching payment requests:', error);
+        throw error;
+      }
+
+      return data as PaymentRequest[];
+    },
+    enabled: !!user?.id,
+  });
+
   const getProjectStatus = (project: Project) => {
     const now = new Date();
     const startDate = new Date(project.start_date);
@@ -120,6 +153,22 @@ const ProjectsList = () => {
   const getMilestoneCount = (projectId: string) => {
     if (!milestones) return 0;
     return milestones.filter(m => m.project_id === projectId).length;
+  };
+
+  const getPaymentRequestsCount = (projectId: string) => {
+    if (!milestones || !paymentRequests) return 0;
+    const projectMilestones = milestones.filter(m => m.project_id === projectId);
+    return paymentRequests.filter(pr => 
+      projectMilestones.some(m => m.id === pr.milestone_id)
+    ).length;
+  };
+
+  const getLatestMilestone = (projectId: string) => {
+    if (!milestones) return null;
+    const projectMilestones = milestones
+      .filter(m => m.project_id === projectId)
+      .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+    return projectMilestones[0] || null;
   };
 
   if (isLoading) {
@@ -189,6 +238,8 @@ const ProjectsList = () => {
               const { status, variant } = getProjectStatus(project);
               const progress = getMilestoneProgress(project);
               const milestoneCount = getMilestoneCount(project.id);
+              const paymentRequestsCount = getPaymentRequestsCount(project.id);
+              const latestMilestone = getLatestMilestone(project.id);
               
               return (
                 <TableRow key={project.id}>
@@ -197,6 +248,12 @@ const ProjectsList = () => {
                       <div>{project.project_name}</div>
                       <div className="text-sm text-gray-500">
                         {milestoneCount} milestone{milestoneCount !== 1 ? 's' : ''}
+                        {paymentRequestsCount > 0 && (
+                          <span className="ml-2 inline-flex items-center">
+                            <DollarSign className="h-3 w-3 mr-1" />
+                            {paymentRequestsCount} payment{paymentRequestsCount !== 1 ? 's' : ''}
+                          </span>
+                        )}
                       </div>
                     </div>
                   </TableCell>
@@ -222,7 +279,15 @@ const ProjectsList = () => {
                     </div>
                   </TableCell>
                   <TableCell>
-                    <AddMilestoneDialog projectId={project.id} />
+                    <div className="flex flex-col space-y-1">
+                      <AddMilestoneDialog projectId={project.id} />
+                      {latestMilestone && (
+                        <AddPaymentRequestDialog 
+                          milestoneId={latestMilestone.id} 
+                          milestoneTitle={latestMilestone.title}
+                        />
+                      )}
+                    </div>
                   </TableCell>
                 </TableRow>
               );

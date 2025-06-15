@@ -6,6 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Shield, Briefcase, Calendar, DollarSign, Users, Settings } from 'lucide-react';
 import AddProjectDialog from '@/components/AddProjectDialog';
 import ProjectsList from '@/components/ProjectsList';
+import PaymentRequestsList from '@/components/PaymentRequestsList';
 
 const ContractorDashboard = () => {
   const { profile, signOut } = useAuth();
@@ -42,7 +43,7 @@ const ContractorDashboard = () => {
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="mb-8">
           <h1 className="text-3xl font-bold text-gray-900">Contractor Dashboard</h1>
-          <p className="text-gray-600 mt-2">Manage your projects and client relationships</p>
+          <p className="text-gray-600 mt-2">Manage your projects, client relationships, and payment requests</p>
         </div>
 
         {/* Stats Cards */}
@@ -95,6 +96,11 @@ const ContractorDashboard = () => {
         {/* Projects List - Full Width */}
         <div className="mb-8">
           <ProjectsList />
+        </div>
+
+        {/* Payment Requests - Full Width */}
+        <div className="mb-8">
+          <PaymentRequestsList />
         </div>
 
         {/* Dashboard Content */}
