@@ -55,29 +55,37 @@ const ContractSigningToggle = ({ document, projectId, projectName, onSigningUpda
         // Get contractor details for notification
         const { data: project, error: projectError } = await supabase
           .from('projects')
-          .select(`
-            contractor_id,
-            profiles!projects_contractor_id_fkey(email, full_name)
-          `)
+          .select('contractor_id')
           .eq('id', projectId)
           .single();
 
         if (projectError) {
           console.error('Error fetching project:', projectError);
-        } else if (project?.profiles) {
-          // Send notification to contractor
-          try {
-            await supabase.functions.invoke('notify-contract-signed', {
-              body: {
-                contractorEmail: project.profiles.email,
-                contractorName: project.profiles.full_name || 'Contractor',
-                projectName: projectName,
-                documentName: document.document_name,
-                clientName: profile?.full_name || 'Client'
-              }
-            });
-          } catch (notificationError) {
-            console.error('Error sending notification:', notificationError);
+        } else if (project?.contractor_id) {
+          // Get contractor profile separately
+          const { data: contractorProfile, error: profileError } = await supabase
+            .from('profiles')
+            .select('email, full_name')
+            .eq('id', project.contractor_id)
+            .single();
+
+          if (profileError) {
+            console.error('Error fetching contractor profile:', profileError);
+          } else if (contractorProfile) {
+            // Send notification to contractor
+            try {
+              await supabase.functions.invoke('notify-contract-signed', {
+                body: {
+                  contractorEmail: contractorProfile.email,
+                  contractorName: contractorProfile.full_name || 'Contractor',
+                  projectName: projectName,
+                  documentName: document.document_name,
+                  clientName: profile?.full_name || 'Client'
+                }
+              });
+            } catch (notificationError) {
+              console.error('Error sending notification:', notificationError);
+            }
           }
         }
 
