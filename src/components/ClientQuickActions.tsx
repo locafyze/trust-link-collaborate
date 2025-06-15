@@ -10,30 +10,46 @@ const ClientQuickActions = () => {
   const navigate = useNavigate();
 
   const handleStartNewProject = () => {
+    // Open email to contact contractor
+    const subject = encodeURIComponent('New Project Inquiry');
+    const body = encodeURIComponent('Hi,\n\nI would like to start a new project. Please contact me to discuss the details.\n\nThank you!');
+    window.open(`mailto:?subject=${subject}&body=${body}`, '_blank');
+    
     toast({
-      title: "Start New Project",
-      description: "Please contact a contractor to start a new project. They will add you to the project.",
+      title: "Project Inquiry Email Created",
+      description: "Your email client has opened with a project inquiry template.",
     });
   };
 
   const handleMessageContractor = () => {
+    // Open email client for messaging
+    const subject = encodeURIComponent('Project Communication');
+    const body = encodeURIComponent('Hi,\n\nI wanted to discuss the following regarding our project:\n\n');
+    window.open(`mailto:?subject=${subject}&body=${body}`, '_blank');
+    
     toast({
-      title: "Message Contractor",
-      description: "Messaging feature will be available soon.",
+      title: "Email Client Opened",
+      description: "Your email client has opened to message your contractor.",
     });
   };
 
   const handleScheduleSiteVisit = () => {
+    // Open email for site visit scheduling
+    const subject = encodeURIComponent('Site Visit Request');
+    const body = encodeURIComponent('Hi,\n\nI would like to schedule a site visit for our project. Please let me know your availability.\n\nThank you!');
+    window.open(`mailto:?subject=${subject}&body=${body}`, '_blank');
+    
     toast({
-      title: "Schedule Site Visit",
-      description: "Site visit scheduling will be available soon.",
+      title: "Site Visit Email Created",
+      description: "Your email client has opened with a site visit request template.",
     });
   };
 
   const handleViewInvoices = () => {
+    // For now, show info about invoices
     toast({
-      title: "View Invoices",
-      description: "Invoice viewing feature will be available soon.",
+      title: "Invoice Information",
+      description: "Invoice viewing feature is being developed. Check your email for invoice notifications.",
     });
   };
 

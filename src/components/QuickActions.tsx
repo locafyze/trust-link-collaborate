@@ -15,16 +15,22 @@ const QuickActions = ({ onProjectAdded }: QuickActionsProps) => {
   const navigate = useNavigate();
 
   const handleScheduleMeeting = () => {
+    // Open default calendar app or create a simple meeting scheduler
+    const subject = encodeURIComponent('Project Meeting');
+    const body = encodeURIComponent('Meeting to discuss project details and progress.');
+    window.open(`mailto:?subject=${subject}&body=${body}`, '_blank');
+    
     toast({
-      title: "Schedule Meeting",
-      description: "Meeting scheduling feature will be available soon.",
+      title: "Meeting Email Created",
+      description: "Your email client has opened with a meeting invitation template.",
     });
   };
 
   const handleSendInvoice = () => {
+    // For now, show a simple form or redirect to invoice creation
     toast({
-      title: "Send Invoice",
-      description: "Invoice feature will be available soon.",
+      title: "Invoice Feature",
+      description: "Invoice creation feature is being developed. You can use external invoicing tools for now.",
     });
   };
 
