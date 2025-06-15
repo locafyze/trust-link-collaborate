@@ -1,19 +1,22 @@
+
 import React, { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Home, MessageSquare, Calendar, DollarSign, Settings } from 'lucide-react';
+import { Home, MessageSquare, DollarSign, Settings } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from '@/hooks/use-toast';
 import ProjectChat from './ProjectChat';
+import ClientInvoices from './ClientInvoices';
 
 const ClientQuickActions = () => {
   const navigate = useNavigate();
   const { profile } = useAuth();
   const [isChatDialogOpen, setIsChatDialogOpen] = useState(false);
+  const [isInvoicesDialogOpen, setIsInvoicesDialogOpen] = useState(false);
   const [selectedProject, setSelectedProject] = useState<{id: string, name: string} | null>(null);
 
   // Fetch client's projects for messaging
@@ -73,11 +76,7 @@ const ClientQuickActions = () => {
   };
 
   const handleViewInvoices = () => {
-    // For now, show info about invoices
-    toast({
-      title: "Invoice Information",
-      description: "Invoice viewing feature is being developed. Check your email for invoice notifications.",
-    });
+    setIsInvoicesDialogOpen(true);
   };
 
   const handleAccountSettings = () => {
@@ -143,6 +142,18 @@ const ClientQuickActions = () => {
               />
             </div>
           )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Invoices Dialog */}
+      <Dialog open={isInvoicesDialogOpen} onOpenChange={setIsInvoicesDialogOpen}>
+        <DialogContent className="max-w-4xl max-h-[80vh] overflow-hidden">
+          <DialogHeader>
+            <DialogTitle>Your Invoices</DialogTitle>
+          </DialogHeader>
+          <div className="overflow-y-auto">
+            <ClientInvoices />
+          </div>
         </DialogContent>
       </Dialog>
     </>
