@@ -24,7 +24,21 @@ interface InvoiceItem {
 interface InvoiceFormData {
   project_id: string;
   invoice_number: string;
+  invoice_date: string;
   due_date: string;
+  // Company details
+  company_name: string;
+  company_address: string;
+  company_phone: string;
+  company_gstin: string;
+  // Client details
+  client_name: string;
+  client_address: string;
+  client_gstin: string;
+  // Payment details
+  payment_method: string;
+  payment_details: string;
+  payment_instructions: string;
   notes: string;
   items: InvoiceItem[];
 }
@@ -39,7 +53,18 @@ const CreateInvoiceDialog = () => {
     defaultValues: {
       project_id: '',
       invoice_number: `INV-${Date.now()}`,
+      invoice_date: new Date().toISOString().split('T')[0],
       due_date: '',
+      company_name: '',
+      company_address: '',
+      company_phone: '',
+      company_gstin: '',
+      client_name: '',
+      client_address: '',
+      client_gstin: '',
+      payment_method: 'bank_transfer',
+      payment_details: '',
+      payment_instructions: '',
       notes: '',
       items: [{ description: '', quantity: 1, rate: 0, amount: 0 }],
     },
@@ -88,38 +113,131 @@ const CreateInvoiceDialog = () => {
           <meta charset="utf-8">
           <title>Invoice ${invoiceData.invoice_number}</title>
           <style>
-            body { font-family: Arial, sans-serif; margin: 40px; color: #333; }
-            .header { text-align: center; margin-bottom: 40px; }
-            .invoice-title { font-size: 32px; color: #2563eb; margin-bottom: 10px; }
-            .invoice-number { font-size: 18px; color: #666; }
-            .details { display: flex; justify-content: space-between; margin-bottom: 40px; }
-            .from, .to { flex: 1; }
-            .to { text-align: right; }
-            .section-title { font-weight: bold; margin-bottom: 10px; color: #2563eb; }
-            .items-table { width: 100%; border-collapse: collapse; margin-bottom: 30px; }
-            .items-table th, .items-table td { border: 1px solid #ddd; padding: 12px; text-align: left; }
-            .items-table th { background-color: #f8f9fa; font-weight: bold; }
-            .total-row { font-weight: bold; background-color: #f8f9fa; }
-            .notes { margin-top: 30px; }
+            body { 
+              font-family: Arial, sans-serif; 
+              margin: 0; 
+              padding: 40px; 
+              color: #333; 
+              line-height: 1.6;
+            }
+            .header { 
+              text-align: center; 
+              margin-bottom: 40px; 
+              border-bottom: 2px solid #2563eb;
+              padding-bottom: 20px;
+            }
+            .invoice-title { 
+              font-size: 42px; 
+              color: #2563eb; 
+              margin-bottom: 10px; 
+              font-weight: bold;
+            }
+            .invoice-meta { 
+              display: flex; 
+              justify-content: space-between; 
+              margin-bottom: 10px; 
+              font-size: 16px;
+            }
+            .details-section { 
+              display: flex; 
+              justify-content: space-between; 
+              margin-bottom: 40px; 
+              gap: 40px;
+            }
+            .company-details, .client-details { 
+              flex: 1; 
+              padding: 20px;
+              background-color: #f8f9fa;
+              border-radius: 8px;
+            }
+            .section-title { 
+              font-weight: bold; 
+              margin-bottom: 15px; 
+              color: #2563eb; 
+              font-size: 18px;
+              border-bottom: 1px solid #ddd;
+              padding-bottom: 5px;
+            }
+            .detail-line { 
+              margin-bottom: 8px; 
+              font-size: 14px;
+            }
+            .items-table { 
+              width: 100%; 
+              border-collapse: collapse; 
+              margin-bottom: 30px; 
+              box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            }
+            .items-table th, .items-table td { 
+              border: 1px solid #ddd; 
+              padding: 15px; 
+              text-align: left; 
+            }
+            .items-table th { 
+              background-color: #2563eb; 
+              color: white; 
+              font-weight: bold; 
+              font-size: 14px;
+            }
+            .items-table td { 
+              font-size: 14px; 
+            }
+            .total-row { 
+              font-weight: bold; 
+              background-color: #f1f5f9; 
+              font-size: 16px;
+            }
             .amount { text-align: right; }
+            .payment-section { 
+              margin-top: 40px; 
+              padding: 20px;
+              background-color: #f8f9fa;
+              border-radius: 8px;
+            }
+            .notes-section { 
+              margin-top: 30px; 
+              padding: 20px;
+              border: 1px solid #ddd;
+              border-radius: 8px;
+            }
+            .payment-method {
+              display: inline-block;
+              background-color: #2563eb;
+              color: white;
+              padding: 4px 12px;
+              border-radius: 4px;
+              font-size: 12px;
+              font-weight: bold;
+              text-transform: uppercase;
+            }
           </style>
         </head>
         <body>
           <div class="header">
             <div class="invoice-title">INVOICE</div>
-            <div class="invoice-number">#${invoiceData.invoice_number}</div>
+            <div class="invoice-meta">
+              <span><strong>Invoice #:</strong> ${invoiceData.invoice_number}</span>
+              <span><strong>Date:</strong> ${new Date(invoiceData.invoice_date).toLocaleDateString()}</span>
+              <span><strong>Due:</strong> ${new Date(invoiceData.due_date).toLocaleDateString()}</span>
+            </div>
           </div>
           
-          <div class="details">
-            <div class="from">
-              <div class="section-title">From:</div>
-              <div>Contractor</div>
+          <div class="details-section">
+            <div class="company-details">
+              <div class="section-title">From (Service Provider)</div>
+              <div class="detail-line"><strong>${invoiceData.company_name || 'Your Company Name'}</strong></div>
+              ${invoiceData.company_address ? `<div class="detail-line">${invoiceData.company_address}</div>` : ''}
+              ${invoiceData.company_phone ? `<div class="detail-line">Phone: ${invoiceData.company_phone}</div>` : ''}
+              ${invoiceData.company_gstin ? `<div class="detail-line">GSTIN: ${invoiceData.company_gstin}</div>` : ''}
             </div>
-            <div class="to">
-              <div class="section-title">To:</div>
-              <div>${selectedProject.client_email}</div>
-              <div><strong>Project:</strong> ${selectedProject.project_name}</div>
-              <div><strong>Due Date:</strong> ${new Date(invoiceData.due_date).toLocaleDateString()}</div>
+            
+            <div class="client-details">
+              <div class="section-title">To (Bill To)</div>
+              <div class="detail-line"><strong>${invoiceData.client_name || selectedProject.client_email}</strong></div>
+              ${invoiceData.client_address ? `<div class="detail-line">${invoiceData.client_address}</div>` : ''}
+              <div class="detail-line">Email: ${selectedProject.client_email}</div>
+              ${invoiceData.client_gstin ? `<div class="detail-line">GSTIN: ${invoiceData.client_gstin}</div>` : ''}
+              <div class="detail-line"><strong>Project:</strong> ${selectedProject.project_name}</div>
             </div>
           </div>
 
@@ -142,18 +260,32 @@ const CreateInvoiceDialog = () => {
                 </tr>
               `).join('')}
               <tr class="total-row">
-                <td colspan="3"><strong>Total</strong></td>
+                <td colspan="3"><strong>Total Amount</strong></td>
                 <td class="amount"><strong>$${calculateTotal().toFixed(2)}</strong></td>
               </tr>
             </tbody>
           </table>
 
+          <div class="payment-section">
+            <div class="section-title">Payment Information</div>
+            <div class="detail-line">
+              <span class="payment-method">${invoiceData.payment_method.replace('_', ' ').toUpperCase()}</span>
+            </div>
+            ${invoiceData.payment_details ? `<div class="detail-line"><strong>Payment Details:</strong> ${invoiceData.payment_details}</div>` : ''}
+            ${invoiceData.payment_instructions ? `<div class="detail-line"><strong>Instructions:</strong> ${invoiceData.payment_instructions}</div>` : ''}
+          </div>
+
           ${invoiceData.notes ? `
-            <div class="notes">
-              <div class="section-title">Notes:</div>
+            <div class="notes-section">
+              <div class="section-title">Additional Notes</div>
               <p>${invoiceData.notes}</p>
             </div>
           ` : ''}
+          
+          <div style="margin-top: 50px; text-align: center; color: #666; font-size: 12px; border-top: 1px solid #ddd; padding-top: 20px;">
+            <p>Thank you for your business!</p>
+            <p>This invoice was generated on ${new Date().toLocaleDateString()}</p>
+          </div>
         </body>
       </html>
     `;
@@ -205,7 +337,7 @@ const CreateInvoiceDialog = () => {
       queryClient.invalidateQueries({ queryKey: ['project-documents'] });
       toast({
         title: 'Invoice Created',
-        description: 'Invoice has been generated and saved to the project.',
+        description: 'Professional invoice has been generated and saved to the project.',
       });
       setOpen(false);
       form.reset();
@@ -255,77 +387,220 @@ const CreateInvoiceDialog = () => {
           Create Invoice
         </Button>
       </DialogTrigger>
-      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-w-6xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center">
             <DollarSign className="h-5 w-5 mr-2" />
-            Create Invoice
+            Create Professional Invoice
           </DialogTitle>
           <DialogDescription>
-            Generate a professional invoice for your project work.
+            Generate a comprehensive business invoice with all professional details.
           </DialogDescription>
         </DialogHeader>
 
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <FormField
-                control={form.control}
-                name="project_id"
-                rules={{ required: 'Please select a project' }}
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Project</FormLabel>
-                    <Select onValueChange={field.onChange} value={field.value}>
-                      <FormControl>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select a project" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        {projects?.map((project) => (
-                          <SelectItem key={project.id} value={project.id}>
-                            {project.project_name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+            {/* Basic Invoice Info */}
+            <Card>
+              <CardHeader>
+                <CardTitle>Invoice Information</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                  <FormField
+                    control={form.control}
+                    name="project_id"
+                    rules={{ required: 'Please select a project' }}
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Project</FormLabel>
+                        <Select onValueChange={field.onChange} value={field.value}>
+                          <FormControl>
+                            <SelectTrigger>
+                              <SelectValue placeholder="Select a project" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            {projects?.map((project) => (
+                              <SelectItem key={project.id} value={project.id}>
+                                {project.project_name}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
 
-              <FormField
-                control={form.control}
-                name="invoice_number"
-                rules={{ required: 'Invoice number is required' }}
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Invoice Number</FormLabel>
-                    <FormControl>
-                      <Input {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+                  <FormField
+                    control={form.control}
+                    name="invoice_number"
+                    rules={{ required: 'Invoice number is required' }}
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Invoice Number</FormLabel>
+                        <FormControl>
+                          <Input {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
 
-              <FormField
-                control={form.control}
-                name="due_date"
-                rules={{ required: 'Due date is required' }}
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Due Date</FormLabel>
-                    <FormControl>
-                      <Input type="date" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            </div>
+                  <FormField
+                    control={form.control}
+                    name="invoice_date"
+                    rules={{ required: 'Invoice date is required' }}
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Invoice Date</FormLabel>
+                        <FormControl>
+                          <Input type="date" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
 
+                  <FormField
+                    control={form.control}
+                    name="due_date"
+                    rules={{ required: 'Due date is required' }}
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Due Date</FormLabel>
+                        <FormControl>
+                          <Input type="date" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Company Details */}
+            <Card>
+              <CardHeader>
+                <CardTitle>Your Company Details</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <FormField
+                    control={form.control}
+                    name="company_name"
+                    rules={{ required: 'Company name is required' }}
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Company Name</FormLabel>
+                        <FormControl>
+                          <Input {...field} placeholder="Your Business Name" />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control}
+                    name="company_phone"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Phone Number</FormLabel>
+                        <FormControl>
+                          <Input {...field} placeholder="+1 (555) 123-4567" />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control}
+                    name="company_address"
+                    render={({ field }) => (
+                      <FormItem className="md:col-span-2">
+                        <FormLabel>Company Address</FormLabel>
+                        <FormControl>
+                          <Textarea {...field} placeholder="123 Business St, City, State, ZIP" rows={2} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control}
+                    name="company_gstin"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>GSTIN (Optional)</FormLabel>
+                        <FormControl>
+                          <Input {...field} placeholder="GST Registration Number" />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Client Details */}
+            <Card>
+              <CardHeader>
+                <CardTitle>Client Details</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <FormField
+                    control={form.control}
+                    name="client_name"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Client Name/Company</FormLabel>
+                        <FormControl>
+                          <Input {...field} placeholder="Client's full name or company" />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control}
+                    name="client_gstin"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Client GSTIN (Optional)</FormLabel>
+                        <FormControl>
+                          <Input {...field} placeholder="Client's GST number" />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control}
+                    name="client_address"
+                    render={({ field }) => (
+                      <FormItem className="md:col-span-2">
+                        <FormLabel>Client Address</FormLabel>
+                        <FormControl>
+                          <Textarea {...field} placeholder="Client's billing address" rows={2} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Invoice Items */}
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center justify-between">
@@ -438,16 +713,81 @@ const CreateInvoiceDialog = () => {
               </CardContent>
             </Card>
 
+            {/* Payment Details */}
+            <Card>
+              <CardHeader>
+                <CardTitle>Payment Information</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <FormField
+                    control={form.control}
+                    name="payment_method"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Payment Method</FormLabel>
+                        <Select onValueChange={field.onChange} value={field.value}>
+                          <FormControl>
+                            <SelectTrigger>
+                              <SelectValue placeholder="Select payment method" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            <SelectItem value="bank_transfer">Bank Transfer</SelectItem>
+                            <SelectItem value="upi">UPI</SelectItem>
+                            <SelectItem value="paypal">PayPal</SelectItem>
+                            <SelectItem value="stripe">Stripe</SelectItem>
+                            <SelectItem value="check">Check</SelectItem>
+                            <SelectItem value="cash">Cash</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control}
+                    name="payment_details"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Payment Details</FormLabel>
+                        <FormControl>
+                          <Input {...field} placeholder="Account number, UPI ID, etc." />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control}
+                    name="payment_instructions"
+                    render={({ field }) => (
+                      <FormItem className="md:col-span-2">
+                        <FormLabel>Payment Instructions</FormLabel>
+                        <FormControl>
+                          <Textarea {...field} placeholder="Additional payment instructions..." rows={2} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Notes */}
             <FormField
               control={form.control}
               name="notes"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Notes (Optional)</FormLabel>
+                  <FormLabel>Additional Notes (Optional)</FormLabel>
                   <FormControl>
                     <Textarea 
                       {...field} 
-                      placeholder="Additional notes or payment terms..."
+                      placeholder="Terms and conditions, thank you note, etc..."
                       rows={3}
                     />
                   </FormControl>
@@ -464,7 +804,7 @@ const CreateInvoiceDialog = () => {
                 type="submit" 
                 disabled={createInvoiceMutation.isPending || isGenerating}
               >
-                {isGenerating ? 'Generating...' : 'Create Invoice'}
+                {isGenerating ? 'Generating Invoice...' : 'Create Professional Invoice'}
               </Button>
             </div>
           </form>
