@@ -1,11 +1,7 @@
 import React, { useState } from 'react';
-import { useForm } from 'react-hook-form';
-import { zodResolver } from '@hookform/resolvers/zod';
-import * as z from 'zod';
-import { supabase } from '@/integrations/supabase/client';
-import { useAuth } from '@/contexts/AuthContext';
-import { useSubscription } from '@/hooks/useSubscription';
 import { toast } from '@/hooks/use-toast';
+import { useAuth } from '@/contexts/AuthContext';
+import { supabase } from '@/integrations/supabase/client';
 import {
   Dialog,
   DialogContent,
@@ -14,251 +10,242 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog';
-import {
-  Form,
-  FormControl,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
-import { Plus, Lock } from 'lucide-react';
-import UpgradeDialog from './UpgradeDialog';
+import { Calendar } from 'lucide-react';
+import { DatePicker } from '@/components/ui/date-picker';
+import { cn } from '@/lib/utils';
+import { format } from 'date-fns';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { useSubscription } from '@/hooks/useSubscription';
 
-const formSchema = z.object({
-  project_name: z.string().min(1, 'Project name is required'),
-  start_date: z.string().min(1, 'Start date is required'),
-  end_date: z.string().min(1, 'End date is required'),
-  client_email: z.string().email('Please enter a valid email address'),
-});
-
-type FormData = z.infer<typeof formSchema>;
+import { validateEmail, validateProjectName, validateDateRange, sanitizeInput, checkRateLimit } from '@/lib/security';
 
 interface AddProjectDialogProps {
-  onProjectAdded?: () => void;
+  onSuccess: () => void;
 }
 
-const AddProjectDialog: React.FC<AddProjectDialogProps> = ({ onProjectAdded }) => {
-  const [open, setOpen] = useState(false);
-  const [upgradeOpen, setUpgradeOpen] = useState(false);
-  const [isSubmitting, setIsSubmitting] = useState(false);
+const AddProjectDialog: React.FC<AddProjectDialogProps> = ({ onSuccess }) => {
   const { user } = useAuth();
-  const { hasActiveSubscription, availableCredits, refreshData } = useSubscription();
+  const [open, setOpen] = useState(false);
+  const [projectName, setProjectName] = useState('');
+  const [startDate, setStartDate] = useState('');
+  const [endDate, setEndDate] = useState('');
+  const [clientEmail, setClientEmail] = useState('');
+  const [loading, setLoading] = useState(false);
+  const { onUpgrade } = useSubscription();
 
-  const form = useForm<FormData>({
-    resolver: zodResolver(formSchema),
-    defaultValues: {
-      project_name: '',
-      start_date: '',
-      end_date: '',
-      client_email: '',
-    },
-  });
-
-  const canCreateProject = hasActiveSubscription && availableCredits > 0;
-
-  const handleCreateProject = () => {
-    if (!canCreateProject) {
-      if (!hasActiveSubscription) {
-        setUpgradeOpen(true);
-      } else if (availableCredits === 0) {
-        setUpgradeOpen(true);
-      }
-      return;
-    }
-    setOpen(true);
-  };
-
-  const onSubmit = async (data: FormData) => {
-    if (!user) {
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    // Rate limiting check
+    if (!checkRateLimit(`create-project-${user?.id}`, 5, 300000)) { // 5 requests per 5 minutes
       toast({
-        title: 'Error',
-        description: 'You must be logged in to create a project.',
+        title: 'Too Many Requests',
+        description: 'Please wait before creating another project.',
         variant: 'destructive',
       });
       return;
     }
 
-    if (!canCreateProject) {
+    // Input validation
+    if (!validateProjectName(projectName)) {
       toast({
-        title: 'Error',
-        description: 'You need an active subscription and available credits to create a project.',
+        title: 'Invalid Project Name',
+        description: 'Project name must be between 1 and 255 characters.',
         variant: 'destructive',
       });
       return;
     }
 
-    setIsSubmitting(true);
+    if (!validateEmail(clientEmail)) {
+      toast({
+        title: 'Invalid Email',
+        description: 'Please enter a valid email address.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    if (!validateDateRange(new Date(startDate), new Date(endDate))) {
+      toast({
+        title: 'Invalid Date Range',
+        description: 'End date must be after start date.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    setLoading(true);
 
     try {
-      // Consume project credit
-      const { data: creditConsumed, error: creditError } = await supabase
-        .rpc('consume_project_credit', { user_id_param: user.id });
+      // Sanitize inputs
+      const sanitizedProjectName = sanitizeInput(projectName);
+      const sanitizedClientEmail = clientEmail.trim().toLowerCase();
 
-      if (creditError || !creditConsumed) {
-        throw new Error('Failed to consume project credit');
+      // Consume credit first (atomic operation)
+      const { data: creditConsumed, error: creditError } = await supabase
+        .rpc('consume_project_credit', { user_id_param: user?.id });
+
+      if (creditError) {
+        console.error('Credit consumption error:', creditError);
+        toast({
+          title: 'Credit Error',
+          description: 'Failed to consume project credit. Please try again.',
+          variant: 'destructive',
+        });
+        return;
       }
 
-      // Insert project into database
-      const { data: project, error } = await supabase
+      if (!creditConsumed) {
+        onUpgrade('project');
+        return;
+      }
+
+      // Create project with validated data
+      const { error } = await supabase
         .from('projects')
-        .insert([
-          {
-            project_name: data.project_name,
-            start_date: data.start_date,
-            end_date: data.end_date,
-            client_email: data.client_email,
-            contractor_id: user.id,
-          },
-        ])
-        .select()
-        .single();
+        .insert({
+          project_name: sanitizedProjectName,
+          start_date: startDate,
+          end_date: endDate,
+          client_email: sanitizedClientEmail,
+          contractor_id: user?.id,
+        });
 
       if (error) {
-        throw error;
+        console.error('Project creation error:', error);
+        
+        // If project creation fails, we should ideally rollback the credit
+        // This would require a more sophisticated transaction handling
+        toast({
+          title: 'Creation Failed',
+          description: 'Failed to create project. Please contact support.',
+          variant: 'destructive',
+        });
+        return;
       }
 
       toast({
         title: 'Success',
-        description: `Project "${data.project_name}" created successfully! Email invitation sent to ${data.client_email}.`,
+        description: 'Project created successfully!',
       });
 
-      form.reset();
-      setOpen(false);
-      onProjectAdded?.();
-      refreshData(); // Refresh subscription data
+      onSuccess();
+      setProjectName('');
+      setStartDate('');
+      setEndDate('');
+      setClientEmail('');
     } catch (error) {
-      console.error('Error creating project:', error);
+      console.error('Unexpected error:', error);
       toast({
         title: 'Error',
-        description: 'Failed to create project. Please try again.',
+        description: 'An unexpected error occurred. Please try again.',
         variant: 'destructive',
       });
     } finally {
-      setIsSubmitting(false);
+      setLoading(false);
     }
   };
 
-  const handleUpgradeSuccess = () => {
-    refreshData();
-  };
-
   return (
-    <>
-      <Dialog open={open} onOpenChange={setOpen}>
-        <DialogTrigger asChild>
-          <Button 
-            className="w-full justify-start" 
-            variant={canCreateProject ? "default" : "outline"}
-            onClick={handleCreateProject}
-            disabled={!hasActiveSubscription}
-          >
-            {canCreateProject ? (
-              <Plus className="h-4 w-4 mr-2" />
-            ) : (
-              <Lock className="h-4 w-4 mr-2" />
-            )}
-            {!hasActiveSubscription 
-              ? 'Subscribe to Create Projects' 
-              : availableCredits === 0 
-                ? 'Buy Credits to Create Projects'
-                : 'Add New Project'
-            }
-          </Button>
-        </DialogTrigger>
-        <DialogContent className="sm:max-w-[425px]">
-          <DialogHeader>
-            <DialogTitle>Create New Project</DialogTitle>
-            <DialogDescription>
-              Fill in the project details and invite a client to collaborate.
-              {availableCredits > 0 && (
-                <span className="block mt-1 text-green-600">
-                  Available credits: {availableCredits}
-                </span>
-              )}
-            </DialogDescription>
-          </DialogHeader>
-          <Form {...form}>
-            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-              <FormField
-                control={form.control}
-                name="project_name"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Project Name</FormLabel>
-                    <FormControl>
-                      <Input placeholder="Enter project name" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="start_date"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Start Date</FormLabel>
-                    <FormControl>
-                      <Input type="date" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="end_date"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>End Date</FormLabel>
-                    <FormControl>
-                      <Input type="date" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="client_email"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Client Email</FormLabel>
-                    <FormControl>
-                      <Input type="email" placeholder="client@example.com" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <div className="flex justify-end space-x-2 pt-4">
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger asChild>
+        <Button variant="outline">Add Project</Button>
+      </DialogTrigger>
+      <DialogContent className="sm:max-w-[425px]">
+        <DialogHeader>
+          <DialogTitle>Add New Project</DialogTitle>
+          <DialogDescription>
+            Create a new project to start managing your tasks and milestones.
+          </DialogDescription>
+        </DialogHeader>
+        <form onSubmit={handleSubmit} className="grid gap-4 py-4">
+          <div className="grid grid-cols-4 items-center gap-4">
+            <Label htmlFor="name" className="text-right">
+              Project Name
+            </Label>
+            <Input
+              type="text"
+              id="name"
+              value={projectName}
+              onChange={(e) => setProjectName(e.target.value)}
+              className="col-span-3"
+            />
+          </div>
+          <div className="grid grid-cols-4 items-center gap-4">
+            <Label htmlFor="startDate" className="text-right">
+              Start Date
+            </Label>
+            <Popover>
+              <PopoverTrigger asChild>
                 <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => setOpen(false)}
-                  disabled={isSubmitting}
+                  variant={'outline'}
+                  className={cn(
+                    'w-[240px] justify-start text-left font-normal',
+                    !startDate && 'text-muted-foreground'
+                  )}
                 >
-                  Cancel
+                  <Calendar className="mr-2 h-4 w-4" />
+                  {startDate ? format(new Date(startDate), 'PPP') : <span>Pick a date</span>}
                 </Button>
-                <Button type="submit" disabled={isSubmitting}>
-                  {isSubmitting ? 'Creating...' : 'Create Project'}
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0" align="start">
+                <DatePicker
+                  mode="single"
+                  selected={startDate ? new Date(startDate) : undefined}
+                  onSelect={(date) => setStartDate(date ? date.toISOString() : '')}
+                  initialFocus
+                />
+              </PopoverContent>
+            </Popover>
+          </div>
+          <div className="grid grid-cols-4 items-center gap-4">
+            <Label htmlFor="endDate" className="text-right">
+              End Date
+            </Label>
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button
+                  variant={'outline'}
+                  className={cn(
+                    'w-[240px] justify-start text-left font-normal',
+                    !endDate && 'text-muted-foreground'
+                  )}
+                >
+                  <Calendar className="mr-2 h-4 w-4" />
+                  {endDate ? format(new Date(endDate), 'PPP') : <span>Pick a date</span>}
                 </Button>
-              </div>
-            </form>
-          </Form>
-        </DialogContent>
-      </Dialog>
-
-      <UpgradeDialog
-        open={upgradeOpen}
-        onOpenChange={setUpgradeOpen}
-        type={!hasActiveSubscription ? 'subscription' : 'project'}
-        onSuccess={handleUpgradeSuccess}
-      />
-    </>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0" align="start">
+                <DatePicker
+                  mode="single"
+                  selected={endDate ? new Date(endDate) : undefined}
+                  onSelect={(date) => setEndDate(date ? date.toISOString() : '')}
+                  initialFocus
+                />
+              </PopoverContent>
+            </Popover>
+          </div>
+          <div className="grid grid-cols-4 items-center gap-4">
+            <Label htmlFor="email" className="text-right">
+              Client Email
+            </Label>
+            <Input
+              type="email"
+              id="email"
+              value={clientEmail}
+              onChange={(e) => setClientEmail(e.target.value)}
+              className="col-span-3"
+            />
+          </div>
+          <Button type="submit" disabled={loading}>
+            {loading ? 'Creating...' : 'Create Project'}
+          </Button>
+        </form>
+      </DialogContent>
+    </Dialog>
   );
 };
 

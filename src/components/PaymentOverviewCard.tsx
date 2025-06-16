@@ -26,9 +26,13 @@ interface PaymentRequest {
 const PaymentOverviewCard = () => {
   const { profile } = useAuth();
 
-  const { data: paymentRequests, isLoading } = useQuery({
+  const { data: paymentRequests, isLoading, error } = useQuery({
     queryKey: ['client-payment-requests', profile?.email],
     queryFn: async () => {
+      if (!profile?.email) {
+        throw new Error('User email not available');
+      }
+
       console.log('Fetching payment requests for client:', profile?.email);
       
       const { data, error } = await supabase
@@ -45,13 +49,15 @@ const PaymentOverviewCard = () => {
 
       if (error) {
         console.error('Error fetching payment requests:', error);
-        throw error;
+        throw new Error('Failed to fetch payment requests');
       }
 
       console.log('Fetched payment requests for client:', data);
       return data as PaymentRequest[];
     },
     enabled: !!profile?.email,
+    retry: 2,
+    staleTime: 5 * 60 * 1000, // 5 minutes
   });
 
   if (isLoading) {
@@ -65,6 +71,20 @@ const PaymentOverviewCard = () => {
           <div className="flex items-center justify-center h-32">
             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
           </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  if (error) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle>Payment Overview</CardTitle>
+          <CardDescription>Error loading payment information</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <p className="text-red-600">Failed to load payment data. Please try again later.</p>
         </CardContent>
       </Card>
     );
