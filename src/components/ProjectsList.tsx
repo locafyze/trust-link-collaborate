@@ -2,6 +2,7 @@ import React from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
+import { useIsMobile } from '@/hooks/use-mobile';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
@@ -13,6 +14,7 @@ import AddMilestoneDialog from './AddMilestoneDialog';
 import AddPaymentRequestDialog from './AddPaymentRequestDialog';
 import ProjectDocuments from './ProjectDocuments';
 import ProjectChat from './ProjectChat';
+import MobileProjectCard from './MobileProjectCard';
 
 interface Project {
   id: string;
@@ -42,6 +44,7 @@ interface PaymentRequest {
 
 const ProjectsList = () => {
   const { user } = useAuth();
+  const isMobile = useIsMobile();
   const [expandedProjects, setExpandedProjects] = React.useState<Set<string>>(new Set());
 
   const { data: projects, isLoading, error } = useQuery({
@@ -229,6 +232,44 @@ const ProjectsList = () => {
     );
   }
 
+  // Mobile view with card layout
+  if (isMobile) {
+    return (
+      <div className="space-y-6">
+        <Card>
+          <CardHeader>
+            <CardTitle>Your Projects</CardTitle>
+            <CardDescription>Manage and track your project progress</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              {projects.map((project) => {
+                const { status, variant } = getProjectStatus(project);
+                const progress = getMilestoneProgress(project);
+                
+                return (
+                  <MobileProjectCard
+                    key={project.id}
+                    project={{
+                      id: project.id,
+                      name: project.project_name,
+                      contractor: project.client_email,
+                      status,
+                      progress,
+                      budget: '$0' // You can calculate this from payment requests if needed
+                    }}
+                    isContractor={true}
+                  />
+                );
+              })}
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  // Desktop view with table layout
   return (
     <div className="space-y-6">
       <Card>
@@ -237,112 +278,114 @@ const ProjectsList = () => {
           <CardDescription>Manage and track your project progress</CardDescription>
         </CardHeader>
         <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Project Name</TableHead>
-                <TableHead>Client</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Progress</TableHead>
-                <TableHead>Timeline</TableHead>
-                <TableHead>Actions</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {projects.map((project) => {
-                const { status, variant } = getProjectStatus(project);
-                const progress = getMilestoneProgress(project);
-                const milestoneCount = getMilestoneCount(project.id);
-                const paymentRequestsCount = getPaymentRequestsCount(project.id);
-                const latestMilestone = getLatestMilestone(project.id);
-                const isExpanded = expandedProjects.has(project.id);
-                
-                return (
-                  <React.Fragment key={project.id}>
-                    <TableRow>
-                      <TableCell className="font-medium">
-                        <div className="flex items-center space-x-2">
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => toggleProjectExpansion(project.id)}
-                            className="p-1"
-                          >
-                            {isExpanded ? (
-                              <ChevronUp className="h-4 w-4" />
-                            ) : (
-                              <ChevronDown className="h-4 w-4" />
-                            )}
-                          </Button>
-                          <div>
-                            <div>{project.project_name}</div>
-                            <div className="text-sm text-gray-500">
-                              {milestoneCount} milestone{milestoneCount !== 1 ? 's' : ''}
-                              {paymentRequestsCount > 0 && (
-                                <span className="ml-2 inline-flex items-center">
-                                  <DollarSign className="h-3 w-3 mr-1" />
-                                  {paymentRequestsCount} payment{paymentRequestsCount !== 1 ? 's' : ''}
-                                </span>
+          <div className="overflow-x-auto">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Project Name</TableHead>
+                  <TableHead>Client</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead>Progress</TableHead>
+                  <TableHead>Timeline</TableHead>
+                  <TableHead>Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {projects.map((project) => {
+                  const { status, variant } = getProjectStatus(project);
+                  const progress = getMilestoneProgress(project);
+                  const milestoneCount = getMilestoneCount(project.id);
+                  const paymentRequestsCount = getPaymentRequestsCount(project.id);
+                  const latestMilestone = getLatestMilestone(project.id);
+                  const isExpanded = expandedProjects.has(project.id);
+                  
+                  return (
+                    <React.Fragment key={project.id}>
+                      <TableRow>
+                        <TableCell className="font-medium">
+                          <div className="flex items-center space-x-2">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => toggleProjectExpansion(project.id)}
+                              className="p-1"
+                            >
+                              {isExpanded ? (
+                                <ChevronUp className="h-4 w-4" />
+                              ) : (
+                                <ChevronDown className="h-4 w-4" />
                               )}
+                            </Button>
+                            <div>
+                              <div>{project.project_name}</div>
+                              <div className="text-sm text-gray-500">
+                                {milestoneCount} milestone{milestoneCount !== 1 ? 's' : ''}
+                                {paymentRequestsCount > 0 && (
+                                  <span className="ml-2 inline-flex items-center">
+                                    <DollarSign className="h-3 w-3 mr-1" />
+                                    {paymentRequestsCount} payment{paymentRequestsCount !== 1 ? 's' : ''}
+                                  </span>
+                                )}
+                              </div>
                             </div>
                           </div>
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex items-center">
-                          <User className="h-4 w-4 mr-2 text-gray-500" />
-                          {project.client_email}
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <Badge variant={variant}>{status}</Badge>
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex items-center space-x-2">
-                          <Progress value={progress} className="w-16" />
-                          <span className="text-sm text-gray-600">{progress}%</span>
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex items-center text-sm text-gray-600">
-                          <Calendar className="h-4 w-4 mr-2" />
-                          {new Date(project.start_date).toLocaleDateString()} - {new Date(project.end_date).toLocaleDateString()}
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex flex-col space-y-1">
-                          <AddMilestoneDialog projectId={project.id} />
-                          {latestMilestone && (
-                            <AddPaymentRequestDialog 
-                              milestoneId={latestMilestone.id} 
-                              milestoneTitle={latestMilestone.title}
-                            />
-                          )}
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                    {isExpanded && (
-                      <TableRow>
-                        <TableCell colSpan={6} className="p-4 bg-gray-50">
-                          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                            <ProjectDocuments 
-                              projectId={project.id} 
-                              projectName={project.project_name}
-                              isContractor={true} 
-                            />
-                            <ProjectChat
-                              projectId={project.id}
-                              projectName={project.project_name}
-                            />
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex items-center">
+                            <User className="h-4 w-4 mr-2 text-gray-500" />
+                            {project.client_email}
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <Badge variant={variant}>{status}</Badge>
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex items-center space-x-2">
+                            <Progress value={progress} className="w-16" />
+                            <span className="text-sm text-gray-600">{progress}%</span>
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex items-center text-sm text-gray-600">
+                            <Calendar className="h-4 w-4 mr-2" />
+                            {new Date(project.start_date).toLocaleDateString()} - {new Date(project.end_date).toLocaleDateString()}
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex flex-col space-y-1">
+                            <AddMilestoneDialog projectId={project.id} />
+                            {latestMilestone && (
+                              <AddPaymentRequestDialog 
+                                milestoneId={latestMilestone.id} 
+                                milestoneTitle={latestMilestone.title}
+                              />
+                            )}
                           </div>
                         </TableCell>
                       </TableRow>
-                    )}
-                  </React.Fragment>
-                );
-              })}
-            </TableBody>
-          </Table>
+                      {isExpanded && (
+                        <TableRow>
+                          <TableCell colSpan={6} className="p-4 bg-gray-50">
+                            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                              <ProjectDocuments 
+                                projectId={project.id} 
+                                projectName={project.project_name}
+                                isContractor={true} 
+                              />
+                              <ProjectChat
+                                projectId={project.id}
+                                projectName={project.project_name}
+                              />
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      )}
+                    </React.Fragment>
+                  );
+                })}
+              </TableBody>
+            </Table>
+          </div>
         </CardContent>
       </Card>
     </div>

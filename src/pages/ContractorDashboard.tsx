@@ -45,7 +45,7 @@ const ContractorDashboard = () => {
             <div className="flex items-center space-x-4">
               {isMobile && <MobileNavigation role="contractor" />}
               <h1 className="text-xl font-semibold text-gray-900 dark:text-white">
-                Contractor Dashboard
+                {isMobile ? 'Dashboard' : 'Contractor Dashboard'}
               </h1>
             </div>
             <div className="flex items-center space-x-3">
@@ -58,7 +58,7 @@ const ContractorDashboard = () => {
               )}
               <ThemeToggle />
               <Button variant="outline" onClick={signOut}>
-                Sign Out
+                {isMobile ? 'Out' : 'Sign Out'}
               </Button>
             </div>
           </div>
@@ -71,15 +71,25 @@ const ContractorDashboard = () => {
           <WelcomeMessage name={profile?.full_name} role="contractor" />
           <ContractorStats />
           
-          <div className="grid gap-6 lg:grid-cols-3">
-            <div className="lg:col-span-2 space-y-6">
+          {isMobile ? (
+            // Mobile Layout - Stack everything vertically
+            <div className="space-y-6">
+              <QuickActions onProjectAdded={handleProjectAdded} />
               <ProjectsList />
               <RecentActivity />
             </div>
-            <div>
-              <QuickActions onProjectAdded={handleProjectAdded} />
+          ) : (
+            // Desktop Layout - Side by side
+            <div className="grid gap-6 lg:grid-cols-3">
+              <div className="lg:col-span-2 space-y-6">
+                <ProjectsList />
+                <RecentActivity />
+              </div>
+              <div>
+                <QuickActions onProjectAdded={handleProjectAdded} />
+              </div>
             </div>
-          </div>
+          )}
         </div>
       </main>
 
