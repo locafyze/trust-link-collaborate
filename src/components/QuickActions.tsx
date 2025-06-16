@@ -39,7 +39,7 @@ const QuickActions = ({ onProjectAdded }: QuickActionsProps) => {
       </CardHeader>
       <CardContent>
         <div className="grid grid-cols-1 gap-3">
-          <AddProjectDialog onProjectAdded={onProjectAdded} />
+          <AddProjectDialog onSuccess={onProjectAdded} />
           <CreateInvoiceDialog />
           <Button 
             className="w-full justify-start" 

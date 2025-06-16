@@ -9,6 +9,7 @@ interface SubscriptionData {
   loading: boolean;
   error: string | null;
   refreshData: () => Promise<void>;
+  onUpgrade: (type: 'subscription' | 'project') => void;
 }
 
 export const useSubscription = (): SubscriptionData => {
@@ -67,11 +68,18 @@ export const useSubscription = (): SubscriptionData => {
     await fetchSubscriptionData();
   };
 
+  const onUpgrade = (type: 'subscription' | 'project') => {
+    // For now, just log the upgrade request
+    console.log('Upgrade requested:', type);
+    // TODO: Implement upgrade logic when Razorpay integration is ready
+  };
+
   return {
     hasActiveSubscription,
     availableCredits,
     loading,
     error,
-    refreshData
+    refreshData,
+    onUpgrade
   };
 };
