@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { toast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
@@ -18,7 +19,6 @@ import { DatePicker } from '@/components/ui/date-picker';
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { useSubscription } from '@/hooks/useSubscription';
 
 import { validateEmail, validateProjectName, validateDateRange, sanitizeInput, checkRateLimit } from '@/lib/security';
 
@@ -34,7 +34,6 @@ const AddProjectDialog: React.FC<AddProjectDialogProps> = ({ onSuccess }) => {
   const [endDate, setEndDate] = useState('');
   const [clientEmail, setClientEmail] = useState('');
   const [loading, setLoading] = useState(false);
-  const { onUpgrade } = useSubscription();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -84,26 +83,7 @@ const AddProjectDialog: React.FC<AddProjectDialogProps> = ({ onSuccess }) => {
       const sanitizedProjectName = sanitizeInput(projectName);
       const sanitizedClientEmail = clientEmail.trim().toLowerCase();
 
-      // Consume credit first (atomic operation)
-      const { data: creditConsumed, error: creditError } = await supabase
-        .rpc('consume_project_credit', { user_id_param: user?.id });
-
-      if (creditError) {
-        console.error('Credit consumption error:', creditError);
-        toast({
-          title: 'Credit Error',
-          description: 'Failed to consume project credit. Please try again.',
-          variant: 'destructive',
-        });
-        return;
-      }
-
-      if (!creditConsumed) {
-        onUpgrade('project');
-        return;
-      }
-
-      // Create project with validated data
+      // Create project directly without credit consumption
       const { error } = await supabase
         .from('projects')
         .insert({
@@ -116,12 +96,9 @@ const AddProjectDialog: React.FC<AddProjectDialogProps> = ({ onSuccess }) => {
 
       if (error) {
         console.error('Project creation error:', error);
-        
-        // If project creation fails, we should ideally rollback the credit
-        // This would require a more sophisticated transaction handling
         toast({
           title: 'Creation Failed',
-          description: 'Failed to create project. Please contact support.',
+          description: 'Failed to create project. Please try again.',
           variant: 'destructive',
         });
         return;
@@ -133,6 +110,7 @@ const AddProjectDialog: React.FC<AddProjectDialogProps> = ({ onSuccess }) => {
       });
 
       onSuccess();
+      setOpen(false);
       setProjectName('');
       setStartDate('');
       setEndDate('');
