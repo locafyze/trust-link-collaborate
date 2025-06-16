@@ -10,6 +10,6 @@ export interface DatePickerProps {
   className?: string
 }
 
-export function DatePicker({ ...props }: DatePickerProps) {
-  return <Calendar {...props} />
+export function DatePicker({ mode = "single", ...props }: DatePickerProps) {
+  return <Calendar mode={mode} {...props} />
 }
