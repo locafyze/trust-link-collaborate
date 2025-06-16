@@ -10,7 +10,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Plus, Minus, FileText, DollarSign } from 'lucide-react';
+import { Plus, Minus, FileText, DollarSign, QrCode, Download } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 
 interface InvoiceItem {
@@ -30,6 +30,7 @@ interface InvoiceFormData {
   company_address: string;
   company_phone: string;
   company_gstin: string;
+  company_upi_id: string;
   // Client details
   client_name: string;
   client_address: string;
@@ -42,11 +43,19 @@ interface InvoiceFormData {
   items: InvoiceItem[];
 }
 
+interface InvoiceState {
+  id?: string;
+  status: 'draft' | 'sent' | 'paid';
+  paid_at?: string;
+}
+
 const CreateInvoiceDialog = () => {
   const { user } = useAuth();
   const queryClient = useQueryClient();
   const [open, setOpen] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
+  const [currentInvoice, setCurrentInvoice] = useState<InvoiceState | null>(null);
+  const [qrCodeUrl, setQrCodeUrl] = useState<string>('');
 
   const form = useForm<InvoiceFormData>({
     defaultValues: {
@@ -58,10 +67,11 @@ const CreateInvoiceDialog = () => {
       company_address: '',
       company_phone: '',
       company_gstin: '',
+      company_upi_id: '',
       client_name: '',
       client_address: '',
       client_gstin: '',
-      payment_method: 'bank_transfer',
+      payment_method: 'upi',
       payment_details: '',
       payment_instructions: '',
       notes: '',
@@ -107,7 +117,27 @@ const CreateInvoiceDialog = () => {
     }).format(amount);
   };
 
-  const generateInvoiceHTML = (invoiceData: InvoiceFormData, selectedProject: any) => {
+  const generateUPILink = (upiId: string, amount: number, companyName: string) => {
+    const encodedName = encodeURIComponent(companyName);
+    return `upi://pay?pa=${upiId}&pn=${encodedName}&am=${amount}&cu=INR`;
+  };
+
+  const generateQRCode = async (upiLink: string) => {
+    try {
+      // Using QR Server API for QR code generation
+      const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(upiLink)}`;
+      setQrCodeUrl(qrUrl);
+      return qrUrl;
+    } catch (error) {
+      console.error('Failed to generate QR code:', error);
+      return '';
+    }
+  };
+
+  const generateInvoiceHTML = (invoiceData: InvoiceFormData, selectedProject: any, includeQR = true) => {
+    const total = calculateTotal();
+    const upiLink = invoiceData.company_upi_id ? generateUPILink(invoiceData.company_upi_id, total, invoiceData.company_name) : '';
+    
     return `
       <!DOCTYPE html>
       <html>
@@ -196,6 +226,23 @@ const CreateInvoiceDialog = () => {
               background-color: #f8f9fa;
               border-radius: 8px;
             }
+            .upi-payment-section {
+              margin-top: 30px;
+              padding: 20px;
+              border: 2px solid #2563eb;
+              border-radius: 8px;
+              text-align: center;
+              background-color: #f0f7ff;
+            }
+            .qr-code {
+              margin: 20px 0;
+            }
+            .upi-instructions {
+              font-size: 16px;
+              font-weight: bold;
+              color: #2563eb;
+              margin-bottom: 10px;
+            }
             .notes-section { 
               margin-top: 30px; 
               padding: 20px;
@@ -212,16 +259,40 @@ const CreateInvoiceDialog = () => {
               font-weight: bold;
               text-transform: uppercase;
             }
+            .status-badge {
+              display: inline-block;
+              padding: 8px 16px;
+              border-radius: 20px;
+              font-weight: bold;
+              font-size: 14px;
+              margin-left: 20px;
+            }
+            .status-paid {
+              background-color: #10b981;
+              color: white;
+            }
+            .status-pending {
+              background-color: #f59e0b;
+              color: white;
+            }
           </style>
         </head>
         <body>
           <div class="header">
-            <div class="invoice-title">INVOICE</div>
+            <div class="invoice-title">
+              INVOICE
+              ${currentInvoice?.status === 'paid' ? '<span class="status-badge status-paid">PAID</span>' : '<span class="status-badge status-pending">PENDING</span>'}
+            </div>
             <div class="invoice-meta">
               <span><strong>Invoice #:</strong> ${invoiceData.invoice_number}</span>
               <span><strong>Date:</strong> ${new Date(invoiceData.invoice_date).toLocaleDateString('en-IN')}</span>
               <span><strong>Due:</strong> ${new Date(invoiceData.due_date).toLocaleDateString('en-IN')}</span>
             </div>
+            ${currentInvoice?.status === 'paid' && currentInvoice.paid_at ? `
+              <div style="margin-top: 10px; color: #10b981; font-weight: bold;">
+                Paid on: ${new Date(currentInvoice.paid_at).toLocaleDateString('en-IN')}
+              </div>
+            ` : ''}
           </div>
           
           <div class="details-section">
@@ -231,6 +302,7 @@ const CreateInvoiceDialog = () => {
               ${invoiceData.company_address ? `<div class="detail-line">${invoiceData.company_address}</div>` : ''}
               ${invoiceData.company_phone ? `<div class="detail-line">Phone: ${invoiceData.company_phone}</div>` : ''}
               ${invoiceData.company_gstin ? `<div class="detail-line">GSTIN: ${invoiceData.company_gstin}</div>` : ''}
+              ${invoiceData.company_upi_id ? `<div class="detail-line">UPI ID: ${invoiceData.company_upi_id}</div>` : ''}
             </div>
             
             <div class="client-details">
@@ -263,10 +335,24 @@ const CreateInvoiceDialog = () => {
               `).join('')}
               <tr class="total-row">
                 <td colspan="3"><strong>Total Amount</strong></td>
-                <td class="amount"><strong>${formatIndianCurrency(calculateTotal())}</strong></td>
+                <td class="amount"><strong>${formatIndianCurrency(total)}</strong></td>
               </tr>
             </tbody>
           </table>
+
+          ${includeQR && invoiceData.company_upi_id && currentInvoice?.status !== 'paid' ? `
+            <div class="upi-payment-section">
+              <div class="section-title">Quick Payment via UPI</div>
+              <div class="upi-instructions">Scan this QR to pay directly via UPI</div>
+              <div class="qr-code">
+                <img src="https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(upiLink)}" alt="UPI Payment QR Code" />
+              </div>
+              <div style="font-size: 14px; color: #666;">
+                Amount: <strong>${formatIndianCurrency(total)}</strong><br>
+                UPI ID: <strong>${invoiceData.company_upi_id}</strong>
+              </div>
+            </div>
+          ` : ''}
 
           <div class="payment-section">
             <div class="section-title">Payment Information</div>
@@ -286,7 +372,7 @@ const CreateInvoiceDialog = () => {
           
           <div style="margin-top: 50px; text-align: center; color: #666; font-size: 12px; border-top: 1px solid #ddd; padding-top: 20px;">
             <p>Thank you for your business!</p>
-            <p>This invoice was generated on ${new Date().toLocaleDateString('en-IN')}</p>
+            <p>This ${currentInvoice?.status === 'paid' ? 'receipt' : 'invoice'} was generated on ${new Date().toLocaleDateString('en-IN')}</p>
           </div>
         </body>
       </html>
@@ -303,6 +389,13 @@ const CreateInvoiceDialog = () => {
       setIsGenerating(true);
       
       try {
+        // Generate QR code if UPI ID is provided
+        if (data.company_upi_id) {
+          const total = calculateTotal();
+          const upiLink = generateUPILink(data.company_upi_id, total, data.company_name);
+          await generateQRCode(upiLink);
+        }
+
         // Generate the HTML content for the invoice
         const htmlContent = generateInvoiceHTML(data, selectedProject);
         
@@ -322,7 +415,7 @@ const CreateInvoiceDialog = () => {
         if (uploadError) throw uploadError;
 
         // Create a document record in the database
-        const { error: dbError } = await supabase
+        const { data: documentData, error: dbError } = await supabase
           .from('project_documents')
           .insert({
             project_id: data.project_id,
@@ -331,10 +424,13 @@ const CreateInvoiceDialog = () => {
             file_path: filePath,
             file_size: blob.size,
             uploaded_by: user.id,
-          });
+          })
+          .select()
+          .single();
 
         if (dbError) throw dbError;
 
+        setCurrentInvoice({ id: documentData.id, status: 'sent' });
         return data;
       } finally {
         setIsGenerating(false);
@@ -347,13 +443,80 @@ const CreateInvoiceDialog = () => {
         title: 'Invoice Created & Sent',
         description: 'Professional invoice has been created and sent to the client. They can now view it in their dashboard.',
       });
-      setOpen(false);
-      form.reset();
     },
     onError: (error: any) => {
       console.error('Failed to create invoice:', error);
       toast({
         title: 'Failed to create invoice',
+        description: error.message || 'Please try again.',
+        variant: 'destructive',
+      });
+    },
+  });
+
+  const markAsPaidMutation = useMutation({
+    mutationFn: async () => {
+      if (!currentInvoice?.id) throw new Error('No invoice selected');
+
+      const { error } = await supabase
+        .from('project_documents')
+        .update({ 
+          document_type: 'paid_invoice',
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', currentInvoice.id);
+
+      if (error) throw error;
+
+      setCurrentInvoice(prev => prev ? { ...prev, status: 'paid', paid_at: new Date().toISOString() } : null);
+    },
+    onSuccess: () => {
+      toast({
+        title: 'Invoice Marked as Paid',
+        description: 'Invoice status has been updated to paid.',
+      });
+      queryClient.invalidateQueries({ queryKey: ['project-documents'] });
+    },
+    onError: (error: any) => {
+      toast({
+        title: 'Failed to mark as paid',
+        description: error.message || 'Please try again.',
+        variant: 'destructive',
+      });
+    },
+  });
+
+  const generateReceiptMutation = useMutation({
+    mutationFn: async () => {
+      if (!currentInvoice || currentInvoice.status !== 'paid') throw new Error('Invoice not paid');
+
+      const formData = form.getValues();
+      const selectedProject = projects?.find(p => p.id === formData.project_id);
+      if (!selectedProject) throw new Error('Project not found');
+
+      // Generate receipt HTML (same as invoice but marked as receipt)
+      const receiptHtml = generateInvoiceHTML(formData, selectedProject, false);
+      
+      // Create and download the receipt
+      const blob = new Blob([receiptHtml], { type: 'text/html' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `receipt-${formData.invoice_number}.html`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    },
+    onSuccess: () => {
+      toast({
+        title: 'Receipt Downloaded',
+        description: 'Receipt has been generated and downloaded.',
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: 'Failed to generate receipt',
         description: error.message || 'Please try again.',
         variant: 'destructive',
       });
@@ -402,9 +565,51 @@ const CreateInvoiceDialog = () => {
             Create Professional Invoice
           </DialogTitle>
           <DialogDescription>
-            Generate a comprehensive business invoice that will be automatically sent to your client.
+            Generate a comprehensive business invoice with UPI payment QR code that will be automatically sent to your client.
           </DialogDescription>
         </DialogHeader>
+
+        {currentInvoice && (
+          <Card className="mb-6">
+            <CardHeader>
+              <CardTitle className="flex items-center justify-between">
+                <span className="flex items-center">
+                  <QrCode className="h-5 w-5 mr-2" />
+                  Invoice Status: {currentInvoice.status.toUpperCase()}
+                </span>
+                <div className="flex gap-2">
+                  {currentInvoice.status === 'sent' && (
+                    <Button 
+                      onClick={() => markAsPaidMutation.mutate()}
+                      disabled={markAsPaidMutation.isPending}
+                    >
+                      Mark as Paid
+                    </Button>
+                  )}
+                  {currentInvoice.status === 'paid' && (
+                    <Button 
+                      onClick={() => generateReceiptMutation.mutate()}
+                      disabled={generateReceiptMutation.isPending}
+                      variant="outline"
+                    >
+                      <Download className="h-4 w-4 mr-2" />
+                      Download Receipt
+                    </Button>
+                  )}
+                </div>
+              </CardTitle>
+            </CardHeader>
+            {qrCodeUrl && currentInvoice.status !== 'paid' && (
+              <CardContent>
+                <div className="text-center">
+                  <p className="text-sm text-gray-600 mb-4">UPI Payment QR Code included in invoice</p>
+                  <img src={qrCodeUrl} alt="UPI Payment QR Code" className="mx-auto border rounded" />
+                  <p className="text-sm text-blue-600 mt-2">Scan this QR to pay directly via UPI</p>
+                </div>
+              </CardContent>
+            )}
+          </Card>
+        )}
 
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
@@ -527,12 +732,12 @@ const CreateInvoiceDialog = () => {
 
                   <FormField
                     control={form.control}
-                    name="company_address"
+                    name="company_upi_id"
                     render={({ field }) => (
-                      <FormItem className="md:col-span-2">
-                        <FormLabel>Company Address</FormLabel>
+                      <FormItem>
+                        <FormLabel>UPI ID (for QR Code)</FormLabel>
                         <FormControl>
-                          <Textarea {...field} placeholder="123 Business Street, City, State, PIN Code" rows={2} />
+                          <Input {...field} placeholder="your-upi@paytm" />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -547,6 +752,20 @@ const CreateInvoiceDialog = () => {
                         <FormLabel>GSTIN (GST Registration Number)</FormLabel>
                         <FormControl>
                           <Input {...field} placeholder="22AAAAA0000A1Z5" />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control}
+                    name="company_address"
+                    render={({ field }) => (
+                      <FormItem className="md:col-span-2">
+                        <FormLabel>Company Address</FormLabel>
+                        <FormControl>
+                          <Textarea {...field} placeholder="123 Business Street, City, State, PIN Code" rows={2} />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -741,8 +960,8 @@ const CreateInvoiceDialog = () => {
                             </SelectTrigger>
                           </FormControl>
                           <SelectContent>
+                            <SelectItem value="upi">UPI (Recommended)</SelectItem>
                             <SelectItem value="bank_transfer">Bank Transfer (NEFT/RTGS/IMPS)</SelectItem>
-                            <SelectItem value="upi">UPI</SelectItem>
                             <SelectItem value="paytm">Paytm</SelectItem>
                             <SelectItem value="phonepe">PhonePe</SelectItem>
                             <SelectItem value="gpay">Google Pay</SelectItem>
@@ -812,7 +1031,7 @@ const CreateInvoiceDialog = () => {
               </Button>
               <Button 
                 type="submit" 
-                disabled={createInvoiceMutation.isPending || isGenerating}
+                disabled={createInvoiceMutation.isPending || isGenerating || !!currentInvoice}
               >
                 {isGenerating ? 'Creating & Sending Invoice...' : 'Create & Send Invoice'}
               </Button>
