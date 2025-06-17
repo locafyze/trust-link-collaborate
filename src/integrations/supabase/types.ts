@@ -234,6 +234,7 @@ export type Database = {
           file_size: number | null
           id: string
           is_signed: boolean | null
+          metadata: Json | null
           project_id: string
           signed_at: string | null
           signed_by: string | null
@@ -248,6 +249,7 @@ export type Database = {
           file_size?: number | null
           id?: string
           is_signed?: boolean | null
+          metadata?: Json | null
           project_id: string
           signed_at?: string | null
           signed_by?: string | null
@@ -262,6 +264,7 @@ export type Database = {
           file_size?: number | null
           id?: string
           is_signed?: boolean | null
+          metadata?: Json | null
           project_id?: string
           signed_at?: string | null
           signed_by?: string | null

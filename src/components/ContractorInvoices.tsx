@@ -43,11 +43,14 @@ const ContractorInvoices = () => {
 
   const markAsPaidMutation = useMutation({
     mutationFn: async (invoiceId: string) => {
+      const invoice = invoices?.find(inv => inv.id === invoiceId);
+      const currentMetadata = invoice?.metadata || {};
+      
       const { data, error } = await supabase
         .from('project_documents')
         .update({ 
           metadata: { 
-            ...invoices?.find(inv => inv.id === invoiceId)?.metadata,
+            ...currentMetadata,
             status: 'paid',
             paid_at: new Date().toISOString()
           }

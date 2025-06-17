@@ -41,13 +41,16 @@ const ClientInvoices = () => {
     enabled: !!profile?.email,
   });
 
-  const markAsReadMutation = useMutation({
+  const markAsSentMutation = useMutation({
     mutationFn: async (invoiceId: string) => {
+      const invoice = invoices?.find(inv => inv.id === invoiceId);
+      const currentMetadata = invoice?.metadata || {};
+      
       const { data, error } = await supabase
         .from('project_documents')
         .update({ 
           metadata: { 
-            ...invoices?.find(inv => inv.id === invoiceId)?.metadata,
+            ...currentMetadata,
             status: 'sent_to_client',
             sent_at: new Date().toISOString()
           }
@@ -67,7 +70,7 @@ const ClientInvoices = () => {
       });
     },
     onError: (error) => {
-      console.error('Error marking invoice as read:', error);
+      console.error('Error marking invoice as sent:', error);
       toast({
         title: 'Error',
         description: 'Failed to mark invoice as sent. Please try again.',
@@ -214,8 +217,8 @@ const ClientInvoices = () => {
                             <Button
                               variant="default"
                               size="sm"
-                              onClick={() => markAsReadMutation.mutate(invoice.id)}
-                              disabled={markAsReadMutation.isPending}
+                              onClick={() => markAsSentMutation.mutate(invoice.id)}
+                              disabled={markAsSentMutation.isPending}
                             >
                               <Send className="h-4 w-4 mr-1" />
                               Send to Client
