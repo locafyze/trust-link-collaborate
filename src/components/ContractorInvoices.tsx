@@ -7,17 +7,17 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Download, FileText, Calendar, CheckCircle, Send } from 'lucide-react';
+import { FileText, Calendar, CheckCircle, DollarSign } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 
-const ClientInvoices = () => {
-  const { profile } = useAuth();
+const ContractorInvoices = () => {
+  const { user } = useAuth();
   const queryClient = useQueryClient();
 
   const { data: invoices, isLoading } = useQuery({
-    queryKey: ['client-invoices', profile?.email],
+    queryKey: ['contractor-invoices', user?.id],
     queryFn: async () => {
-      if (!profile?.email) return [];
+      if (!user?.id) return [];
       
       const { data, error } = await supabase
         .from('project_documents')
@@ -29,27 +29,27 @@ const ClientInvoices = () => {
           created_at,
           project_id,
           metadata,
-          projects!inner(project_name, contractor_id)
+          projects!inner(project_name, contractor_id, client_email)
         `)
         .eq('document_type', 'invoice')
-        .eq('projects.client_email', profile.email)
+        .eq('projects.contractor_id', user.id)
         .order('created_at', { ascending: false });
 
       if (error) throw error;
       return data;
     },
-    enabled: !!profile?.email,
+    enabled: !!user?.id,
   });
 
-  const markAsReadMutation = useMutation({
+  const markAsPaidMutation = useMutation({
     mutationFn: async (invoiceId: string) => {
       const { data, error } = await supabase
         .from('project_documents')
         .update({ 
           metadata: { 
             ...invoices?.find(inv => inv.id === invoiceId)?.metadata,
-            status: 'sent_to_client',
-            sent_at: new Date().toISOString()
+            status: 'paid',
+            paid_at: new Date().toISOString()
           }
         })
         .eq('id', invoiceId)
@@ -60,53 +60,21 @@ const ClientInvoices = () => {
       return data;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['client-invoices'] });
+      queryClient.invalidateQueries({ queryKey: ['contractor-invoices'] });
       toast({
-        title: 'Invoice sent',
-        description: 'The invoice has been marked as sent to client.',
+        title: 'Invoice marked as paid',
+        description: 'The invoice has been marked as paid successfully.',
       });
     },
     onError: (error) => {
-      console.error('Error marking invoice as read:', error);
+      console.error('Error marking invoice as paid:', error);
       toast({
         title: 'Error',
-        description: 'Failed to mark invoice as sent. Please try again.',
+        description: 'Failed to mark invoice as paid. Please try again.',
         variant: 'destructive',
       });
     },
   });
-
-  const handleDownload = async (invoice: any) => {
-    try {
-      const { data, error } = await supabase.storage
-        .from('project-documents')
-        .download(invoice.file_path);
-
-      if (error) throw error;
-
-      // Create download link
-      const url = URL.createObjectURL(data);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = invoice.document_name;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
-
-      toast({
-        title: 'Download started',
-        description: `${invoice.document_name} is downloading.`,
-      });
-    } catch (error) {
-      console.error('Error downloading invoice:', error);
-      toast({
-        title: 'Download failed',
-        description: 'Failed to download the invoice. Please try again.',
-        variant: 'destructive',
-      });
-    }
-  };
 
   const formatFileSize = (bytes: number) => {
     return (bytes / 1024 / 1024).toFixed(2) + ' MB';
@@ -115,8 +83,13 @@ const ClientInvoices = () => {
   const getInvoiceStatus = (invoice: any) => {
     const metadata = invoice.metadata || {};
     if (metadata.status === 'paid') return { status: 'Paid', variant: 'default' as const };
-    if (metadata.status === 'sent_to_client') return { status: 'Sent', variant: 'secondary' as const };
+    if (metadata.status === 'sent_to_client') return { status: 'Sent to Client', variant: 'secondary' as const };
     return { status: 'Draft', variant: 'outline' as const };
+  };
+
+  const getInvoiceAmount = (invoice: any) => {
+    const metadata = invoice.metadata || {};
+    return metadata.amount || 0;
   };
 
   if (isLoading) {
@@ -125,7 +98,7 @@ const ClientInvoices = () => {
         <CardHeader>
           <CardTitle className="flex items-center">
             <FileText className="h-5 w-5 mr-2" />
-            Your Invoices
+            My Invoices
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -142,7 +115,7 @@ const ClientInvoices = () => {
       <CardHeader>
         <CardTitle className="flex items-center">
           <FileText className="h-5 w-5 mr-2" />
-          Your Invoices
+          My Invoices
           {invoices && invoices.length > 0 && (
             <Badge variant="secondary" className="ml-2">
               {invoices.length}
@@ -154,9 +127,9 @@ const ClientInvoices = () => {
         {!invoices || invoices.length === 0 ? (
           <div className="text-center py-8">
             <FileText className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-            <p className="text-gray-600">No invoices available yet.</p>
+            <p className="text-gray-600">No invoices created yet.</p>
             <p className="text-sm text-gray-500 mt-2">
-              Invoices from your contractors will appear here once they upload them.
+              Create invoices for your projects and manage payments here.
             </p>
           </div>
         ) : (
@@ -166,15 +139,17 @@ const ClientInvoices = () => {
                 <TableRow>
                   <TableHead>Invoice</TableHead>
                   <TableHead>Project</TableHead>
+                  <TableHead>Client</TableHead>
+                  <TableHead>Amount</TableHead>
                   <TableHead>Date</TableHead>
                   <TableHead>Status</TableHead>
-                  <TableHead>Size</TableHead>
                   <TableHead>Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {invoices.map((invoice) => {
                   const { status, variant } = getInvoiceStatus(invoice);
+                  const amount = getInvoiceAmount(invoice);
                   return (
                     <TableRow key={invoice.id}>
                       <TableCell>
@@ -187,6 +162,15 @@ const ClientInvoices = () => {
                         <span className="text-sm">{invoice.projects.project_name}</span>
                       </TableCell>
                       <TableCell>
+                        <span className="text-sm">{invoice.projects.client_email}</span>
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex items-center">
+                          <DollarSign className="h-4 w-4 mr-1 text-green-600" />
+                          <span>₹{amount.toLocaleString()}</span>
+                        </div>
+                      </TableCell>
+                      <TableCell>
                         <div className="flex items-center space-x-1 text-sm text-gray-500">
                           <Calendar className="h-3 w-3" />
                           <span>{new Date(invoice.created_at).toLocaleDateString()}</span>
@@ -196,32 +180,20 @@ const ClientInvoices = () => {
                         <Badge variant={variant}>{status}</Badge>
                       </TableCell>
                       <TableCell>
-                        <span className="text-sm text-gray-500">
-                          {invoice.file_size ? formatFileSize(invoice.file_size) : 'N/A'}
-                        </span>
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex space-x-2">
+                        {status !== 'Paid' && (
                           <Button
-                            variant="outline"
+                            variant="default"
                             size="sm"
-                            onClick={() => handleDownload(invoice)}
+                            onClick={() => markAsPaidMutation.mutate(invoice.id)}
+                            disabled={markAsPaidMutation.isPending}
                           >
-                            <Download className="h-4 w-4 mr-1" />
-                            Download
+                            <CheckCircle className="h-4 w-4 mr-1" />
+                            Mark as Paid
                           </Button>
-                          {status === 'Draft' && (
-                            <Button
-                              variant="default"
-                              size="sm"
-                              onClick={() => markAsReadMutation.mutate(invoice.id)}
-                              disabled={markAsReadMutation.isPending}
-                            >
-                              <Send className="h-4 w-4 mr-1" />
-                              Send to Client
-                            </Button>
-                          )}
-                        </div>
+                        )}
+                        {status === 'Paid' && (
+                          <span className="text-green-600 text-sm font-medium">Completed</span>
+                        )}
                       </TableCell>
                     </TableRow>
                   );
@@ -235,4 +207,4 @@ const ClientInvoices = () => {
   );
 };
 
-export default ClientInvoices;
+export default ContractorInvoices;

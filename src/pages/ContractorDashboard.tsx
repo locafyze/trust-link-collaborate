@@ -14,6 +14,7 @@ import WelcomeMessage from '@/components/WelcomeMessage';
 import MobileNavigation from '@/components/MobileNavigation';
 import ThemeToggle from '@/components/ThemeToggle';
 import NotificationBell from '@/components/NotificationBell';
+import ContractorInvoices from '@/components/ContractorInvoices';
 import { useProjectChatModal } from '@/hooks/useProjectChatModal';
 
 const ContractorDashboard = () => {
@@ -76,6 +77,7 @@ const ContractorDashboard = () => {
             <div className="space-y-6">
               <QuickActions onProjectAdded={handleProjectAdded} />
               <ProjectsList />
+              <ContractorInvoices />
               <RecentActivity />
             </div>
           ) : (
@@ -83,6 +85,7 @@ const ContractorDashboard = () => {
             <div className="grid gap-6 lg:grid-cols-3">
               <div className="lg:col-span-2 space-y-6">
                 <ProjectsList />
+                <ContractorInvoices />
                 <RecentActivity />
               </div>
               <div>
