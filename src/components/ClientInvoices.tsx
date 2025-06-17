@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -44,7 +43,7 @@ const ClientInvoices = () => {
   const markAsSentMutation = useMutation({
     mutationFn: async (invoiceId: string) => {
       const invoice = invoices?.find(inv => inv.id === invoiceId);
-      const currentMetadata = invoice?.metadata || {};
+      const currentMetadata = invoice?.metadata && typeof invoice.metadata === 'object' ? invoice.metadata : {};
       
       const { data, error } = await supabase
         .from('project_documents')
