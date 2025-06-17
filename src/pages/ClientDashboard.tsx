@@ -9,6 +9,7 @@ import { useNavigate } from 'react-router-dom';
 import ClientProjectsList from '@/components/ClientProjectsList';
 import ClientQuickActions from '@/components/ClientQuickActions';
 import PaymentOverviewCard from '@/components/PaymentOverviewCard';
+import ClientBills from '@/components/ClientBills';
 import WelcomeMessage from '@/components/WelcomeMessage';
 import MobileNavigation from '@/components/MobileNavigation';
 import ThemeToggle from '@/components/ThemeToggle';
@@ -68,6 +69,7 @@ const ClientDashboard = () => {
             <div className="lg:col-span-2 space-y-6">
               <ClientProjectsList />
               <PaymentOverviewCard />
+              <ClientBills />
             </div>
             <div>
               <ClientQuickActions />

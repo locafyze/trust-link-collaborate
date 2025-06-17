@@ -9,6 +9,63 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
+      bills: {
+        Row: {
+          amount: number
+          bill_number: string
+          client_email: string
+          created_at: string
+          due_date: string
+          id: string
+          invoice_id: string
+          metadata: Json | null
+          project_id: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          amount: number
+          bill_number: string
+          client_email: string
+          created_at?: string
+          due_date: string
+          id?: string
+          invoice_id: string
+          metadata?: Json | null
+          project_id: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          amount?: number
+          bill_number?: string
+          client_email?: string
+          created_at?: string
+          due_date?: string
+          id?: string
+          invoice_id?: string
+          metadata?: Json | null
+          project_id?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bills_invoice_id_fkey"
+            columns: ["invoice_id"]
+            isOneToOne: false
+            referencedRelation: "project_documents"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bills_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       messages: {
         Row: {
           created_at: string
@@ -87,6 +144,39 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      notifications: {
+        Row: {
+          created_at: string
+          data: Json | null
+          id: string
+          is_read: boolean | null
+          message: string
+          title: string
+          type: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          data?: Json | null
+          id?: string
+          is_read?: boolean | null
+          message: string
+          title: string
+          type: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          data?: Json | null
+          id?: string
+          is_read?: boolean | null
+          message?: string
+          title?: string
+          type?: string
+          user_id?: string
+        }
+        Relationships: []
       }
       payment_requests: {
         Row: {
@@ -406,6 +496,10 @@ export type Database = {
       consume_project_credit: {
         Args: { user_id_param: string }
         Returns: boolean
+      }
+      generate_bill_number: {
+        Args: Record<PropertyKey, never>
+        Returns: string
       }
       get_available_credits: {
         Args: { user_id_param: string }
