@@ -1,17 +1,17 @@
+
 import React from 'react';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Download, FileText, Calendar, CheckCircle, Send } from 'lucide-react';
+import { Download, FileText, Calendar } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 
 const ClientInvoices = () => {
   const { profile } = useAuth();
-  const queryClient = useQueryClient();
 
   const { data: invoices, isLoading } = useQuery({
     queryKey: ['client-invoices', profile?.email],
@@ -38,44 +38,6 @@ const ClientInvoices = () => {
       return data;
     },
     enabled: !!profile?.email,
-  });
-
-  const markAsSentMutation = useMutation({
-    mutationFn: async (invoiceId: string) => {
-      const invoice = invoices?.find(inv => inv.id === invoiceId);
-      const currentMetadata = invoice?.metadata && typeof invoice.metadata === 'object' ? invoice.metadata : {};
-      
-      const { data, error } = await supabase
-        .from('project_documents')
-        .update({ 
-          metadata: { 
-            ...currentMetadata,
-            status: 'sent_to_client',
-            sent_at: new Date().toISOString()
-          }
-        })
-        .eq('id', invoiceId)
-        .select()
-        .single();
-
-      if (error) throw error;
-      return data;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['client-invoices'] });
-      toast({
-        title: 'Invoice sent',
-        description: 'The invoice has been marked as sent to client.',
-      });
-    },
-    onError: (error) => {
-      console.error('Error marking invoice as sent:', error);
-      toast({
-        title: 'Error',
-        description: 'Failed to mark invoice as sent. Please try again.',
-        variant: 'destructive',
-      });
-    },
   });
 
   const handleDownload = async (invoice: any) => {
@@ -203,27 +165,14 @@ const ClientInvoices = () => {
                         </span>
                       </TableCell>
                       <TableCell>
-                        <div className="flex space-x-2">
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => handleDownload(invoice)}
-                          >
-                            <Download className="h-4 w-4 mr-1" />
-                            Download
-                          </Button>
-                          {status === 'Draft' && (
-                            <Button
-                              variant="default"
-                              size="sm"
-                              onClick={() => markAsSentMutation.mutate(invoice.id)}
-                              disabled={markAsSentMutation.isPending}
-                            >
-                              <Send className="h-4 w-4 mr-1" />
-                              Send to Client
-                            </Button>
-                          )}
-                        </div>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleDownload(invoice)}
+                        >
+                          <Download className="h-4 w-4 mr-1" />
+                          Download
+                        </Button>
                       </TableCell>
                     </TableRow>
                   );

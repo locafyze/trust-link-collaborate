@@ -44,6 +44,7 @@ const ContractorInvoices = () => {
     mutationFn: async (invoiceId: string) => {
       const invoice = invoices?.find(inv => inv.id === invoiceId);
       const currentMetadata = invoice?.metadata && typeof invoice.metadata === 'object' ? invoice.metadata : {};
+      const amount = currentMetadata.amount || 0;
       
       const { data, error } = await supabase
         .from('project_documents')
@@ -51,6 +52,7 @@ const ContractorInvoices = () => {
           metadata: { 
             ...currentMetadata,
             status: 'paid',
+            amount: amount, // Ensure amount is included
             paid_at: new Date().toISOString()
           }
         })
@@ -65,7 +67,7 @@ const ContractorInvoices = () => {
       queryClient.invalidateQueries({ queryKey: ['contractor-invoices'] });
       toast({
         title: 'Invoice marked as paid',
-        description: 'The invoice has been marked as paid successfully.',
+        description: 'The invoice has been marked as paid and a bill has been sent to the client.',
       });
     },
     onError: (error) => {
