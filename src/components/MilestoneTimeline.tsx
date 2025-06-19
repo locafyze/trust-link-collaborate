@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -66,8 +65,9 @@ const MilestoneTimeline = () => {
             alt={milestone.title}
             className="w-full h-full object-cover"
             onError={(e) => {
-              e.currentTarget.src = '';
-              e.currentTarget.style.display = 'none';
+              const target = e.currentTarget as HTMLImageElement;
+              target.src = '';
+              target.style.display = 'none';
             }}
           />
           <div className="absolute inset-0 bg-black bg-opacity-20 flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity">
